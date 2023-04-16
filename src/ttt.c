@@ -11,5 +11,6 @@
 #include <unistd.h>
 
 int main(int argc, char **argv){
-    
+    //testing purpose it wont get greated but we are going to need it to see
+    //if the server works
 }
