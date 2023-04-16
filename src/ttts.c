@@ -9,6 +9,10 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#define EMPTY 0
+#define X 1
+#define O 2
+
 volatile int active = 1;
 
 void handler(int signum) {
@@ -36,21 +40,55 @@ struct connection_data {
     int fd;
 };
 
+int checkBoard(char** board);
+
 int main(int argc, char **argv) {
+   
+   
     //need to create a single socket for server
     if(argc < 2){
         perror("missing port or socket");
     }
 
     //server socket
-    struct addrinfo server;
-    int error,sock;
 
-    memset(&server,0,sizeof(struct addrinfo));
-    server.ai_family = AF_UNSPEC;
-    server.ai_socktype = SOCK_STREAM;
-    server.ai_flags = AI_PASSIVE;
+
+
+
+
+
+
 
     return EXIT_SUCCESS;
 
+}
+
+int checkBoard(char** board){
+    //check rows 
+    int result;
+    for(int i = 0;i < 3;i++){
+        if (board[i][0] == board[i][1] && board[i][1] == board[i][2]) {
+            result = board[i][0];
+            break;
+        }
+    }
+
+    //check diagonal
+    if (board[0][0] == board[1][1] && board[1][1] == board[2][2]) {
+        result = board[0][0];
+    } 
+    else if (board[0][2] == board[1][1] && board[1][1] == board[2][0]) {
+        result = board[0][2];
+    }
+
+    //check columns
+    for (int i = 0; i < 3; i++) {
+        if (board[0][i] == board[1][i] && board[0][i] == board[i][2]) {
+            result = board[0][i];
+        }
+    }
+
+    if(result != EMPTY){
+        return result;
+    }
 }
