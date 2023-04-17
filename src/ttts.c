@@ -12,35 +12,18 @@
 #define EMPTY 0
 #define X 1
 #define O 2
+#define DRAW 3
 
+//this is needed to handle signals
 volatile int active = 1;
 
 void handler(int signum) {
     active = 0;
 }
 
-// set up signal handlers for primary thread
-// return a mask blocking those signals for worker threads
-// FIXME should check whether any of these actually succeeded
-void install_handlers(sigset_t *mask) {
-    struct sigaction act;
-    act.sa_handler = handler;
-    act.sa_flags = 0;
-    sigemptyset(&act.sa_mask);
-    sigaction(SIGINT, &act, NULL);
-    sigaction(SIGTERM, &act, NULL);
-    sigemptyset(mask);
-    sigaddset(mask, SIGINT);
-    sigaddset(mask, SIGTERM);
-}
-// data to be sent to worker threads
-struct connection_data {
-    struct sockaddr_storage addr;
-    socklen_t addr_len;
-    int fd;
-};
-
+//check board
 int checkBoard(char** board);
+int checkMove();
 
 int main(int argc, char **argv) {
    
@@ -62,33 +45,42 @@ int main(int argc, char **argv) {
     return EXIT_SUCCESS;
 
 }
+int checkMove(char** board,int row, int column){
+    if(board[row][column] != EMPTY){
+        return 1;
+    }
+    return 0;
+}
 
 int checkBoard(char** board){
     //check rows 
-    int result;
     for(int i = 0;i < 3;i++){
         if (board[i][0] == board[i][1] && board[i][1] == board[i][2]) {
-            result = board[i][0];
-            break;
+            return board[i][0];
         }
     }
 
     //check diagonal
     if (board[0][0] == board[1][1] && board[1][1] == board[2][2]) {
-        result = board[0][0];
+        return board[0][0];
     } 
     else if (board[0][2] == board[1][1] && board[1][1] == board[2][0]) {
-        result = board[0][2];
+        return board[0][2];
     }
 
     //check columns
     for (int i = 0; i < 3; i++) {
         if (board[0][i] == board[1][i] && board[0][i] == board[i][2]) {
-            result = board[0][i];
+            return board[0][i];
         }
     }
-
-    if(result != EMPTY){
-        return result;
+    //check if there is no empty space
+    for (int i = 0; i < 3; i++) {
+        for(int j = 0; j < 3;j++)
+            if (board[0][i] == EMPTY) {
+                return EMPTY;
+            }
+        }
     }
+    return DRAW;
 }
