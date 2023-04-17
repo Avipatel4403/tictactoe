@@ -17,15 +17,25 @@
 //this is needed to handle signals
 volatile int active = 1;
 
-void handler(int signum) {
+void handle(int signum) {
     active = 0;
 }
 
 //check board
+
+
+char* protocol(char* message);
+
+
+
 int checkBoard(char** board);
 int checkMove();
 
 int main(int argc, char **argv) {
+
+    //signals 
+    struct sigaction act;
+    struct sigaction old;
    
    
     //need to create a single socket for server
@@ -34,16 +44,11 @@ int main(int argc, char **argv) {
     }
 
     //server socket
+    struct sockaddr_storage server;
 
-
-
-
-
-
-
+    socklen_t servlen = sizeof(server);
 
     return EXIT_SUCCESS;
-
 }
 int checkMove(char** board,int row, int column){
     if(board[row][column] != EMPTY){
