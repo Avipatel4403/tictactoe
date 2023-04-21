@@ -5,8 +5,11 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
+<<<<<<< HEAD
 #include <assert.h>
 
+=======
+>>>>>>> 3769a3f9289959e93cf3f77c1b01a2612bf5ca87
 
 int connect_inet(char *host, char *service) {
     struct addrinfo hints, *info_list, *info;
