@@ -118,6 +118,27 @@ pthread_mutex_t queueLock;
 int curPlayers;
 Client *clientList[2];
 
+void play_game(Game *game) 
+{
+    char buf[BUFSIZE + 1];
+    int bytes;
+
+    Client *playerOne = game->one;
+    Client *playerTwo = game->two;
+
+    printf("Game running!");
+    bytes = read(playerOne->SOCK, buf, BUFSIZE);
+    printf("Read %s bytes from Player One", bytes);
+    bytes = read(playerTwo->SOCK, buf, BUFSIZE);
+    printf("Read %s bytes from Player Two", bytes);
+
+    close(playerOne->SOCK);
+    close(playerTwo->SOCK);
+    free(playerOne);
+    free(playerTwo);
+    free(game);
+}
+
 void create_client(struct connection_data* con) 
 {
     int tid;
@@ -159,7 +180,7 @@ void create_client(struct connection_data* con)
         game->one = clientList[0];
         game->two = clientList[1];
 
-        error = pthread_create(&tid, NULL, read_data, con);
+        error = pthread_create(&tid, NULL, play_game, game);
         if (error != 0) {
             fprintf(stderr, "pthread_create: %s\n", strerror(error));
             close(clientList[0]->SOCK);
