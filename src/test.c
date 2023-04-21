@@ -24,7 +24,7 @@
 #define DRAW 3 //Self Explanatory
 
 //Global
-sigset_t mask;
+
 
 typedef struct Client{
     int SOCK; //Players Connection
@@ -114,77 +114,16 @@ char* protocol(char* message);
 int checkBoard(char** board);
 int checkMove();
 
-pthread_mutex_t queueLock;
 int curPlayers;
 Client *clientList[2];
 
-void create_client(struct connection_data* con) 
-{
-    int tid;
-    int error;
-
-    char buf[BUFSIZE + 1];
-    int bytes;
-    while (active && (bytes = read(con->fd, buf, BUFSIZE)) > 0) {
-        buf[bytes] = '\0';
-    }
-    
-    //check if read message is a valid name/protocol
-
-    char* str = "WAIT|0|";
-    write(con->fd, str, 8);
-
-    pthread_mutex_lock(&queueLock);
-
-    //Create new client
-    Client *client = malloc(sizeof(Client*));
-    client->SOCK = con->fd;
-    //need to read in client name somehow
-    client->NAME = buf[0];
-
-    //Add client to list
-    clientList[curPlayers] = client;
-    curPlayers++;
-
-    if (curPlayers == 2) {
-
-        error = pthread_sigmask(SIG_BLOCK, &mask, NULL);
-        if (error != 0) {
-            fprintf(stderr, "sigmask: %s\n", strerror(error));
-            exit(EXIT_FAILURE);
-        }
-
-        Game *game = (Game *) malloc(sizeof(Game*));
-        //Could maybe add checker here if malloc worked?
-        game->one = clientList[0];
-        game->two = clientList[1];
-
-        error = pthread_create(&tid, NULL, read_data, con);
-        if (error != 0) {
-            fprintf(stderr, "pthread_create: %s\n", strerror(error));
-            close(clientList[0]->SOCK);
-            close(clientList[1]->SOCK);
-            free(clientList[0]);
-            free(clientList[1]);
-            pthread_mutex_unlock(&queueLock);
-            return;
-        }
-
-        // automatically clean up child threads once they terminate
-        pthread_detach(tid);
-
-        // unblock handled signals
-        error = pthread_sigmask(SIG_UNBLOCK, &mask, NULL);
-        if (error != 0) {
-            fprintf(stderr, "sigmask: %s\n", strerror(error));
-            exit(EXIT_FAILURE);
-        }
-    }
-    pthread_mutex_unlock(&queueLock);
+Client* setupClient(struct connection_data* con) {
+    int buffsize = 256;
 }
 
 int main(int argc, char **argv) 
 {
+    sigset_t mask;
     struct connection_data* con;
     int error;
     pthread_t tid;
@@ -213,9 +152,46 @@ int main(int argc, char **argv)
             continue;
         }
 
-        pthread_create(&tid, NULL, create_client, con);
-        pthread_detach(tid);
-        
+        Client *client = setupClient(&con);
+        if(!client) {
+            close(con->fd);
+            free(con);
+            continue;
+        }
+        clientList[curPlayers];
+        curPlayers++;
+
+        if (curPlayers == 2) {
+
+            error = pthread_sigmask(SIG_BLOCK, &mask, NULL);
+            if (error != 0) {
+                fprintf(stderr, "sigmask: %s\n", strerror(error));
+                exit(EXIT_FAILURE);
+            }
+
+            Game *game = (Game *) malloc(sizeof(Game*));
+            //Could maybe add checker here if malloc worked?
+
+            error = pthread_create(&tid, NULL, read_data, con);
+            if (error != 0) {
+                fprintf(stderr, "pthread_create: %s\n", strerror(error));
+                close(clientList[0]->);
+                close(clientList[1]->fd);
+                free(conList[0]);
+                free(conList[1]);
+                continue;
+            }
+
+            // automatically clean up child threads once they terminate
+            pthread_detach(tid);
+
+            // unblock handled signals
+            error = pthread_sigmask(SIG_UNBLOCK, &mask, NULL);
+            if (error != 0) {
+                fprintf(stderr, "sigmask: %s\n", strerror(error));
+                exit(EXIT_FAILURE);
+            }
+        }
     }
 
     puts("Shutting down");

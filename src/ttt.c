@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
+
 int connect_inet(char *host, char *service) {
     struct addrinfo hints, *info_list, *info;
     int sock, error;
