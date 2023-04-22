@@ -3,6 +3,12 @@ all: ttt ttts
 ttt: ttt.c
 	gcc -o ttt ttt.c
 
-ttts: ttts.c
-	gcc -pthread ttts.c -o ttts
+ttts: ttts.c protocol.c
+	gcc -pthread ttts.c protocol.c -o ttts
+
+protocol.o: protocol.c protocol.h
+	gcc -c protocol.c
+
+clean:
+	rm -f ttt ttts protocol.o
 

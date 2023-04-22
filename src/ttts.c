@@ -12,32 +12,38 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#define _POSIX_C_SOURCE 200809L
-#include <unistd.h>
-
-#define QUEUE_SIZE 8
+#include "protocol.h"
 
 //Defintions
+#define QUEUE_SIZE 8
 #define EMPTY 0 //Empty Space on the board
 #define X 1 //Game Status: X is the winner
 #define O 2 //Games Status: O is the winner
 #define DRAW 3 //Self Explanatory
 
-//Global
-sigset_t mask;
+// data to be sent to worker threads
+typedef struct ConnectionData {
+    struct sockaddr_storage addr;
+    socklen_t addr_len;
+    int fd;
+} ConnectionData;
 
-typedef struct Client{
-    int SOCK; //Players Connection
+typedef struct Client {
+    ConnectionData *con; //Players Connection
     char PIECE; // NULL X or O
     char *NAME; //players name
-}Client;
+} Client;
 
-typedef struct Game{
+typedef struct Game {
     Client *one;
     Client *two;
     char board[3][3];
     int status;
-}Game;
+} Game;
+
+//Global
+sigset_t mask;
+int open_listener(char* service, int queue_size);
 
 volatile int active = 1;
 
@@ -62,18 +68,12 @@ void install_handlers(sigset_t* mask) {
     sigaddset(mask, SIGTERM);
 }
 
-// data to be sent to worker threads
-struct connection_data {
-    struct sockaddr_storage addr;
-    socklen_t addr_len;
-    int fd;
-};
-
 #define BUFSIZE 256
 #define HOSTSIZE 100
 #define PORTSIZE 10
 void* read_data(void* arg) {
-    struct connection_data* con = arg;
+    
+    ConnectionData *con = arg;
     char buf[BUFSIZE + 1], host[HOSTSIZE], port[PORTSIZE];
     int bytes, error;
 
@@ -118,56 +118,73 @@ pthread_mutex_t queueLock;
 int curPlayers;
 Client *clientList[2];
 
-void play_game(Game *game) 
-{
-    char buf[BUFSIZE + 1];
+void *play_game(void *arg) 
+{   
+    Game *game = (Game *) arg;
+
+    char buf[BUFSIZE];
     int bytes;
 
     Client *playerOne = game->one;
     Client *playerTwo = game->two;
 
-    printf("Game running!");
-    bytes = read(playerOne->SOCK, buf, BUFSIZE);
-    printf("Read %s bytes from Player One", bytes);
-    bytes = read(playerTwo->SOCK, buf, BUFSIZE);
-    printf("Read %s bytes from Player Two", bytes);
+    printf("Game running!\n");
+    bytes = read(playerOne->con->fd, buf, BUFSIZE);
+    printf("Read %s from Player One\n", buf);
+    bytes = read(playerTwo->con->fd, buf, BUFSIZE);
+    printf("Read %s from Player Two\n", buf);
 
-    close(playerOne->SOCK);
-    close(playerTwo->SOCK);
+    close(playerOne->con->fd);
+    close(playerTwo->con->fd);
+    free(playerOne->NAME);
+    free(playerTwo->NAME);
+    free(playerOne->con);
+    free(playerTwo->con);
     free(playerOne);
     free(playerTwo);
     free(game);
+    return NULL;
 }
 
-void create_client(struct connection_data* con) 
+void *create_client(void *arg) 
 {
-    int tid;
+    pthread_t tid;
     int error;
 
-    char buf[BUFSIZE + 1];
+    char buffer[BUFSIZE];
     int bytes;
-    while (active && (bytes = read(con->fd, buf, BUFSIZE)) > 0) {
-        buf[bytes] = '\0';
+
+    ConnectionData *con = arg;
+
+    bytes = read(con->fd, buffer, BUFSIZE);
+    if(!protocol_name(&buffer[0], bytes)) {
+        close(con->fd);
+        free(con);
+        return NULL;
     }
     
     //check if read message is a valid name/protocol
+    printf("New Player: %s\n", buffer);
 
-    char* str = "WAIT|0|";
-    write(con->fd, str, 8);
+    // char* str = "WAIT|0|";
+    // write(con->fd, str, 8);
 
     pthread_mutex_lock(&queueLock);
 
     //Create new client
     Client *client = malloc(sizeof(Client*));
-    client->SOCK = con->fd;
-    //need to read in client name somehow
-    client->NAME = buf[0];
+    client->con = con;
+    client->NAME = malloc(strlen(buffer) + 1);
+    strcpy(client->NAME, buffer);
 
     //Add client to list
     clientList[curPlayers] = client;
     curPlayers++;
+    printf("Cur Players: %d\n", curPlayers);
 
     if (curPlayers == 2) {
+
+        curPlayers = 0;
 
         error = pthread_sigmask(SIG_BLOCK, &mask, NULL);
         if (error != 0) {
@@ -180,15 +197,15 @@ void create_client(struct connection_data* con)
         game->one = clientList[0];
         game->two = clientList[1];
 
-        error = pthread_create(&tid, NULL, play_game, game);
+        error = pthread_create(&tid, NULL, play_game, (void*) game);
         if (error != 0) {
             fprintf(stderr, "pthread_create: %s\n", strerror(error));
-            close(clientList[0]->SOCK);
-            close(clientList[1]->SOCK);
+            close(clientList[0]->con->fd);
+            close(clientList[1]->con->fd);
             free(clientList[0]);
             free(clientList[1]);
             pthread_mutex_unlock(&queueLock);
-            return;
+            return NULL;
         }
 
         // automatically clean up child threads once they terminate
@@ -202,11 +219,13 @@ void create_client(struct connection_data* con)
         }
     }
     pthread_mutex_unlock(&queueLock);
+    printf("Done creating Client for %s", buffer);
+    return NULL;
 }
 
 int main(int argc, char **argv) 
 {
-    struct connection_data* con;
+    ConnectionData *con;
     int error;
     pthread_t tid;
 
@@ -221,7 +240,7 @@ int main(int argc, char **argv)
 
     while (active) {
 
-        con = (struct connection_data*)malloc(sizeof(struct connection_data));
+        con = (ConnectionData*)malloc(sizeof(ConnectionData));
         con->addr_len = sizeof(struct sockaddr_storage);
         con->fd = accept(listener,
                          (struct sockaddr*)&con->addr,
@@ -234,7 +253,7 @@ int main(int argc, char **argv)
             continue;
         }
 
-        pthread_create(&tid, NULL, create_client, con);
+        pthread_create(&tid, NULL, create_client, (void *) con);
         pthread_detach(tid);
         
     }
@@ -259,7 +278,8 @@ int main(int argc, char **argv)
     return EXIT_SUCCESS;
 }
 
-int open_listener(char* service, int queue_size) {
+int open_listener(char* service, int queue_size) 
+{
     struct addrinfo hint, *info_list, *info;
     int error, sock;
 
@@ -311,14 +331,17 @@ int open_listener(char* service, int queue_size) {
 
     return sock;
 }
-int isValidMove(char** board,int row, int column){
+
+int isValidMove(char** board,int row, int column)
+{
     if(board[row][column] != EMPTY){
         return 1;
     }
     return 0;
 }
 
-int checkBoard(char** board){
+int checkBoard(char** board)
+{
     //check rows 
     for(int i = 0;i < 3;i++){
         if (board[i][0] == board[i][1] && board[i][1] == board[i][2]) {

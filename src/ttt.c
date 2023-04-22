@@ -36,6 +36,7 @@ int connect_inet(char *host, char *service) {
     }
     return sock;
 }
+
 #define BUFLEN 256
 int main(int argc, char **argv) {
     int sock, bytes;
@@ -48,6 +49,7 @@ int main(int argc, char **argv) {
     if (sock < 0) exit(EXIT_FAILURE);
     while ((bytes = read(STDIN_FILENO, buf, BUFLEN)) > 0) {
         write(sock, buf, bytes);
+        printf("Wrote to server!\n");
         // FIXME: should check whether the write succeeded!
     }
     close(sock);
