@@ -20,6 +20,7 @@
 #define X 1 //Game Status: X is the winner
 #define O 2 //Games Status: O is the winner
 #define DRAW 3 //Self Explanatory
+#define BUFSIZE 256
 
 // data to be sent to worker threads
 typedef struct ConnectionData {
@@ -66,47 +67,6 @@ void install_handlers(sigset_t* mask) {
     sigemptyset(mask);
     sigaddset(mask, SIGINT);
     sigaddset(mask, SIGTERM);
-}
-
-#define BUFSIZE 256
-#define HOSTSIZE 100
-#define PORTSIZE 10
-void* read_data(void* arg) {
-    
-    ConnectionData *con = arg;
-    char buf[BUFSIZE + 1], host[HOSTSIZE], port[PORTSIZE];
-    int bytes, error;
-
-    error = getnameinfo(
-        (struct sockaddr*)&con->addr, con->addr_len,
-        host, HOSTSIZE,
-        port, PORTSIZE,
-        NI_NUMERICSERV);
-    if (error) {
-        fprintf(stderr, "getnameinfo: %s\n", gai_strerror(error));
-        strcpy(host, "??");
-        strcpy(port, "??");
-    }
-
-    printf("Connection from %s:%s\n", host, port);
-
-    while (active && (bytes = read(con->fd, buf, BUFSIZE)) > 0) {
-        buf[bytes] = '\0';
-        printf("[%s:%s] read %d bytes |%s|\n", host, port, bytes, buf);
-    }
-
-    if (bytes == 0) {
-        printf("[%s:%s] got EOF\n", host, port);
-    } else if (bytes == -1) {
-        printf("[%s:%s] terminating: %s\n", host, port, strerror(errno));
-    } else {
-        printf("[%s:%s] terminating\n", host, port);
-    }
-
-    close(con->fd);
-    free(con);
-
-    return NULL;
 }
 
 //check board
