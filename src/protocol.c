@@ -1,11 +1,13 @@
+#include <string.h>
 
+int protocol_name(char *buf, int length) 
+{
+    char code[5];
+    strncpy(code, buf, 4);
+    code[4] = '\0';
 
-/*
-format the message being sent from server to client and vice versa 
-into something that is readable for the server
-Ex:
-Play Avi ---> PLAY|3|Avi
-
-if you dont want this i can 
-*/
-
+    if(strcmp(code, "PLAY") != 0) {
+        return 0;
+    }
+    
+}

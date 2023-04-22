@@ -39,6 +39,21 @@ int connect_inet(char *host, char *service) {
     }
     return sock;
 }
+<<<<<<< HEAD
+=======
+
+#define BUFLEN 256
+#define BUFSIZE 512
+
+char *lineBuffer;
+int linePos, lineSize;
+
+void append(char *buf, int len) {
+    int newPos = linePos + len;
+
+    if (newPos > lineSize) {
+        lineSize *= 2;
+>>>>>>> 0ddb63eafe10ab864d91c389ec236de976160b12
 
 #define BUFSIZE 512
 

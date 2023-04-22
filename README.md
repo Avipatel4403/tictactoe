@@ -2,7 +2,8 @@
 # Avi Patel Akp159
 # Darius Karneckij dk910
 
-
+Decisions:
+Player Name: Maximum of 25 characters
 notes(Simplied):
 1:
 PLAY X FIRST
