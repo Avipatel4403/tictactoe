@@ -55,18 +55,14 @@ int main(int argc, char **argv) {
 
     sock = connect_inet(argv[1], argv[2]);
     if (sock < 0) exit(EXIT_FAILURE);
-    printf("here");
+
 
     char buffer[BUFSIZE];
     int bytes;
 
-    while(1){
-
-        bytes = read(STDIN_FILENO , buffer, BUFSIZE);
-
-        if(bytes == BUFSIZE){
+    while((bytes = read(STDIN_FILENO , buffer, BUFSIZE)) > 0){
+        if(bytes >= BUFSIZE){
             printf("Message to long\n");
-
             break;
         }
 
@@ -96,15 +92,19 @@ int main(int argc, char **argv) {
                 temp[5 + count + 1 + i] = buffer[i];
             }
         }
-        temp[5 + count + 1 + bytes - 1] = '|';
-        temp[5 + count + 1 + bytes ] = '\n';
+        if(size != 0){
+            temp[5 + count + 1 + bytes - 1] = '|';
+            temp[5 + count + 1 + bytes ] = '\n';
+        } else{
+            temp[5 + count + 1] = '\n';
+        }
 
 
+        send(sock,temp,BUFSIZE,0);
 
-        write(sock,temp,BUFSIZE);
 
-        read(sock, buffer, BUFSIZE);
-        printf("Data received from the server: %s\n", buffer);
+        recv(sock, buffer, BUFSIZE,0);
+        printf("Data received from the server: %s\n", temp);
         memset(buffer, 0, BUFSIZE);  // clear buffer
     }
     close(sock);
