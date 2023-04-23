@@ -88,11 +88,57 @@ void *play_game(void *arg)
     Client *playerOne = game->one;
     Client *playerTwo = game->two;
 
+    Client* playerTurn = playerOne;
+    char result;
+
     printf("Game running!\n");
-    bytes = read(playerOne->con->fd, buf, BUFSIZE);
-    printf("Read %s from Player One\n", buf);
-    bytes = read(playerTwo->con->fd, buf, BUFSIZE);
-    printf("Read %s from Player Two\n", buf);
+
+
+
+    //request
+    //0 = none
+    //1 = resign
+    //2 = draw 
+    int request = 0;
+
+    while(result != 'X' || result != 'O'){
+        //check request
+        if(request == 1){
+
+        }
+        else if(request == 2){
+
+        }
+
+        bytes = read(playerOne->con->fd, buf, BUFSIZE);
+        protocol_name(buf,BUFSIZE);
+        printf("Read %s from Player One\n", buf);
+
+        if(checkBoard(game->board == 'X' || checkBoard(game->board == 'O'))){
+            break;
+        }
+
+        // make move, resign, or ask draw
+
+        // check request
+         bytes = read(playerTwo->con->fd, buf, BUFSIZE);
+        protocol_name(buf, BUFSIZE);
+        printf("Read %s from Player Two\n", buf);
+        checkBoard(game->board);
+        if (checkBoard(game->board == 'X' || checkBoard(game->board == 'O'))) {
+            break;
+        }
+
+
+    }
+
+
+
+
+
+
+
+
 
     close(playerOne->con->fd);
     close(playerTwo->con->fd);
