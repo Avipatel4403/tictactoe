@@ -94,8 +94,11 @@ void *play_game(void *arg)
     bytes = read(playerTwo->con->fd, buf, BUFSIZE);
     printf("Read %s from Player Two\n", buf);
 
+    // Close file descriptors
     close(playerOne->con->fd);
     close(playerTwo->con->fd);
+
+    // Free dynamically allocated memory
     free(playerOne->NAME);
     free(playerTwo->NAME);
     free(playerOne->con);
@@ -103,6 +106,7 @@ void *play_game(void *arg)
     free(playerOne);
     free(playerTwo);
     free(game);
+    printf("Game ended\n");
     return NULL;
 }
 
@@ -112,30 +116,44 @@ void *create_client(void *arg)
     int error;
 
     char buffer[BUFSIZE];
+    char *name;
     int bytes;
 
     ConnectionData *con = arg;
 
     bytes = read(con->fd, buffer, BUFSIZE);
-    if(!protocol_name(&buffer[0], bytes)) {
-        close(con->fd);
-        free(con);
-        return NULL;
-    }
-    
-    //check if read message is a valid name/protocol
-    printf("New Player: %s\n", buffer);
+    printf("Read: %s\n", buffer);
 
-    // char* str = "WAIT|0|";
-    // write(con->fd, str, 8);
+    while((error = protocol_name(&buffer[0], bytes, &name)) != 2) {
+        if(error == 1) {
+            char *invalid = "INVL|34|Player name exceeds 20 characters|";
+            printf("Size of Invalid: %d\n", (int) strlen(invalid));
+            write(con->fd, invalid, strlen(invalid));
+            read(con->fd, buffer, BUFSIZE);
+            printf("Read: %s\n", buffer);
+            continue;
+        }
+        if(error == 0) {
+            char* malicious = "INVL|23|Invalid Message Format|";
+            write(con->fd, malicious, strlen(malicious));
+            close(con->fd);
+            return NULL;
+        }
+    }
+
+    //check if read message is a valid name/protocol
+
+    char* wait = "WAIT|0|";
+    write(con->fd, wait, sizeof(wait));
 
     pthread_mutex_lock(&queueLock);
 
     //Create new client
-    Client *client = malloc(sizeof(Client*));
+    Client *client = malloc(sizeof(Client));
     client->con = con;
-    client->NAME = malloc(strlen(buffer) + 1);
-    strcpy(client->NAME, buffer);
+    client->NAME = name;
+
+    printf("Bytes: %d\n", bytes);
 
     //Add client to list
     clientList[curPlayers] = client;
@@ -179,7 +197,7 @@ void *create_client(void *arg)
         }
     }
     pthread_mutex_unlock(&queueLock);
-    printf("Done creating Client for %s", buffer);
+    printf("Done creating Client for %s\n", client->NAME);
     return NULL;
 }
 
@@ -220,20 +238,6 @@ int main(int argc, char **argv)
 
     puts("Shutting down");
     close(listener);
-
-    // returning from main() (or calling exit()) immediately terminates all
-    // remaining threads
-
-    // to allow threads to run to completion, we can terminate the primary thread
-    // without calling exit() or returning from main:
-    //   pthread_exit(NULL);
-    // child threads will terminate once they check the value of active, but
-    // there is a risk that read() will block indefinitely, preventing the
-    // thread (and process) from terminating
-
-    // to get a timely shut-down of all threads, including those blocked by
-    // read(), we will could maintain a global list of all active thread IDs
-    // and use pthread_cancel() or pthread_kill() to wake each one
 
     return EXIT_SUCCESS;
 }

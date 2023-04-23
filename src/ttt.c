@@ -118,7 +118,9 @@ int main(int argc, char **argv) {
 
         //get message from server
         memset(buffer,0,BUFSIZE);
-        recv(sock, buffer, BUFSIZE,0);
+        if(recv(sock, buffer, BUFSIZE,0) == 0) {
+            break;
+        }
         printf("Data received from the server: %s\n", buffer);
         memset(buffer, 0, BUFSIZE);  // clear buffer
     }

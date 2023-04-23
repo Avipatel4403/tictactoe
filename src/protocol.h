@@ -1,3 +1,3 @@
 
 
-int protocol_name(char *buf, int length);
+int protocol_name(char *buf, int length, char **name);
