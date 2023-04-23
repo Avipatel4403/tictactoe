@@ -60,7 +60,9 @@ int main(int argc, char **argv) {
     char buffer[BUFSIZE];
     int bytes;
 
-    while((bytes = read(STDIN_FILENO , buffer, BUFSIZE)) > 0){
+    while(1){
+
+        bytes = read(STDIN_FILENO , buffer, BUFSIZE);
         if(bytes >= BUFSIZE){
             printf("Message to long\n");
             break;
@@ -74,39 +76,53 @@ int main(int argc, char **argv) {
         temp[2] = buffer[2];
         temp[3] = buffer[3];
         temp[4] = '|';
+
+        int index = 5;
         int size = bytes - 5;
         char num[4];
         sprintf(num,"%d",size);
-        int count = 0;
         for(int i = 0;num[i] != '\0';i++){
-            temp[5 + i] = num[i];
-            count++;
+            temp[index] = num[i];
+            index++;
         }
-        temp[5 + count] = '|';
+        temp[index] = '|';
+        index++;
 
-        for(int i = 5;i < bytes;i++){
+        for(int i = 5;i < bytes -1 ;i++){
             if(buffer[i] == ' ' && buffer[0] != 'P'){
-                temp[5 + count + 1+ i] = '|';                
+                temp[index++] = '|';
+                index++;                
             }
             else{
-                temp[5 + count + 1 + i] = buffer[i];
+                temp[index] = buffer[i];
+                index++;
             }
         }
+
         if(size != 0){
-            temp[5 + count + 1 + bytes - 1] = '|';
-            temp[5 + count + 1 + bytes ] = '\n';
-        } else{
-            temp[5 + count + 1] = '\n';
+            temp[index] = '|';
+            index++;
         }
 
+        // //print temp
+        // for(int i = 0;i < index;i++){
+        //     printf("%d: %c\n",i, temp[i]);
+        // }
 
-        send(sock,temp,BUFSIZE,0);
+    
 
+        //send message to server
+        send(sock,temp,index,0);
+        //clear temp
+        memset(temp, 0, BUFSIZE);
 
+        //get message from server
+        memset(buffer,0,BUFSIZE);
         recv(sock, buffer, BUFSIZE,0);
-        printf("Data received from the server: %s\n", temp);
+        printf("Data received from the server: %s\n", buffer);
         memset(buffer, 0, BUFSIZE);  // clear buffer
     }
+
     close(sock);
     return EXIT_SUCCESS;
 }
