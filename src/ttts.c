@@ -71,10 +71,10 @@ void install_handlers(sigset_t* mask) {
 
 //check board
 char* protocol(char* message);
-int checkBoard(char** board);
-int checkMove();
+int checkBoard(char board[3][3]);
+int makeMove(char board[3][3], int row, int column, char piece);
 
-pthread_mutex_t queueLock;
+    pthread_mutex_t queueLock;
 int curPlayers;
 Client *clientList[2];
 
@@ -89,45 +89,63 @@ void *play_game(void *arg)
     Client *playerTwo = game->two;
 
     Client* playerTurn = playerOne;
-    char result;
+
 
     printf("Game running!\n");
 
 
+    char result;
 
-    //request
-    //0 = none
-    //1 = resign
-    //2 = draw 
-    int request = 0;
+    while(1){
 
-    while(result != 'X' || result != 'O'){
         //check request
-        if(request == 1){
+        bytes = read(playerTurn->con->fd, buf, BUFSIZE);
+        //someway to check 
+        printf("Read %s from Player %c \n", buf,playerTurn->PIECE);
+
+        //check 
+
+        //if draw
+        DRAWN:
+        if(){
 
         }
-        else if(request == 2){
+        //if resgn
+        RESIGN:
+        else if(){
+            break;
+            
+        }
+        
+        // if move
+        while (makeMove(game->board, row, column, playerTurn->PIECE) != 1) {
+            write(playerTurn->con->fd, "INVL|24|That space is occupied.|", BUFSIZE);
+            bytes = read(playerTurn->con->fd, buf, BUFSIZE);
+            // check message
+            if () {
+                goto DRAWN:
 
+            } 
+            else if {
+                goto RESIGN;
+            }
         }
 
-        bytes = read(playerOne->con->fd, buf, BUFSIZE);
-        protocol_name(buf,BUFSIZE);
-        printf("Read %s from Player One\n", buf);
 
-        if(checkBoard(game->board == 'X' || checkBoard(game->board == 'O'))){
+
+        //make move
+        if (checkBoard(game->board) == 'X' || checkBoard(game->board) == 'O') {
             break;
         }
 
-        // make move, resign, or ask draw
-
-        // check request
-         bytes = read(playerTwo->con->fd, buf, BUFSIZE);
-        protocol_name(buf, BUFSIZE);
-        printf("Read %s from Player Two\n", buf);
-        checkBoard(game->board);
-        if (checkBoard(game->board == 'X' || checkBoard(game->board == 'O'))) {
-            break;
+        //change player
+        if(playerTurn == playerOne){
+            playerTurn = playerTwo;
         }
+        else{
+            playerTurn = playerOne;
+        }
+
 
 
     }
@@ -342,16 +360,15 @@ int open_listener(char* service, int queue_size)
     return sock;
 }
 
-int isValidMove(char** board,int row, int column)
-{
+int makeMove(char board[3][3],int row, int column,char piece) {
     if(board[row][column] != EMPTY){
+        board[row][column] = piece;
         return 1;
     }
     return 0;
 }
 
-int checkBoard(char** board)
-{
+int checkBoard(char board[3][3]) {
     //check rows 
     for(int i = 0;i < 3;i++){
         if (board[i][0] == board[i][1] && board[i][1] == board[i][2]) {
