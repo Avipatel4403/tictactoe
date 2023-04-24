@@ -81,74 +81,77 @@ Client *clientList[2];
 void *play_game(void *arg) 
 {   
     Game *game = (Game *) arg;
-
     char buf[BUFSIZE];
     int bytes;
-
     Client *playerOne = game->one;
     Client *playerTwo = game->two;
-
+    playerOne->PIECE = 'X';
+    playerTwo->PIECE = 'O';
     Client* playerTurn = playerOne;
-
 
     printf("Game running!\n");
 
+    char *begin;
+    begin = protocol_create_begin(playerOne->NAME, &playerOne->PIECE);
+    write(playerOne->con->fd, begin, strlen(begin));
+    begin = protocol_create_begin(playerTwo->NAME, &playerTwo->PIECE);
+    write(playerTwo->con->fd, begin, strlen(begin));
 
     char result;
 
-    while(1){
+    // while(1){
 
-        //check request
-        bytes = read(playerTurn->con->fd, buf, BUFSIZE);
-        //someway to check 
-        printf("Read %s from Player %c \n", buf,playerTurn->PIECE);
+    //     //check request
+    //     bytes = read(playerTurn->con->fd, buf, BUFSIZE);
+    //     //someway to check 
+    //     printf("Read %s from Player %c \n", buf,playerTurn->PIECE);
 
-        //check 
+    //     //check 
 
-        //if draw
-        DRAWN:
-        if(){
+    //     //if draw
+    //     DRAWN:
+    //     if(){
 
-        }
-        //if resgn
-        RESIGN:
-        else if(){
-            break;
+    //     }
+    //     //if resgn
+    //     RESIGN:
+    //     else if(){
+    //         break;
             
-        }
+    //     }
         
-        // if move
-        while (makeMove(game->board, row, column, playerTurn->PIECE) != 1) {
-            write(playerTurn->con->fd, "INVL|24|That space is occupied.|", BUFSIZE);
-            bytes = read(playerTurn->con->fd, buf, BUFSIZE);
-            // check message
-            if () {
-                goto DRAWN:
+    //     // if move
+    //     while (makeMove(game->board, row, column, playerTurn->PIECE) != 1) {
+    //         write(playerTurn->con->fd, "INVL|24|That space is occupied.|", BUFSIZE);
+    //         bytes = read(playerTurn->con->fd, buf, BUFSIZE);
+    //         // check message
+    //         if () {
+    //             goto DRAWN:
 
-            } 
-            else if {
-                goto RESIGN;
-            }
-        }
-
-
-
-        //make move
-        if (checkBoard(game->board) == 'X' || checkBoard(game->board) == 'O') {
-            break;
-        }
-
-        //change player
-        if(playerTurn == playerOne){
-            playerTurn = playerTwo;
-        }
-        else{
-            playerTurn = playerOne;
-        }
+    //         } 
+    //         else if {
+    //             goto RESIGN;
+    //         }
+    //     }
 
 
 
-    }
+    //     //make move
+    //     if (checkBoard(game->board) == 'X' || checkBoard(game->board) == 'O') {
+    //         break;
+    //     }
+
+    //     //change player
+    //     if(playerTurn == playerOne){
+    //         playerTurn = playerTwo;
+    //     }
+    //     else{
+    //         playerTurn = playerOne;
+    //     }
+
+
+
+    // }
 
 
 
@@ -188,7 +191,7 @@ void *create_client(void *arg)
     bytes = read(con->fd, buffer, BUFSIZE);
     printf("Read: %s\n", buffer);
 
-    while((error = protocol_name(&buffer[0], bytes, &name)) != 2) {
+    while((error = protocol_name(&buffer[0], bytes, &name)) != 0) {
         if(error == 1) {
             char *invalid = "INVL|34|Player name exceeds 20 characters|";
             printf("Size of Invalid: %d\n", (int) strlen(invalid));
@@ -197,7 +200,7 @@ void *create_client(void *arg)
             printf("Read: %s\n", buffer);
             continue;
         }
-        if(error == 0) {
+        if(error == 2) {
             char* malicious = "INVL|23|Invalid Message Format|";
             write(con->fd, malicious, strlen(malicious));
             close(con->fd);
@@ -205,10 +208,8 @@ void *create_client(void *arg)
         }
     }
 
-    //check if read message is a valid name/protocol
-
-    char* wait = "WAIT|0|";
-    write(con->fd, wait, sizeof(wait));
+    char *wait = "WAIT|0|";
+    write(con->fd, wait, strlen(wait));
 
     pthread_mutex_lock(&queueLock);
 
@@ -244,8 +245,11 @@ void *create_client(void *arg)
             fprintf(stderr, "pthread_create: %s\n", strerror(error));
             close(clientList[0]->con->fd);
             close(clientList[1]->con->fd);
+            free(clientList[0]->NAME);
+            free(clientList[1]->NAME);
             free(clientList[0]);
             free(clientList[1]);
+            free(game);
             pthread_mutex_unlock(&queueLock);
             return NULL;
         }
@@ -273,12 +277,20 @@ int main(int argc, char **argv)
 
     install_handlers(&mask);
 
+
     char* service = argc == 2 ? argv[1] : "15000";
 
     int listener = open_listener(service, QUEUE_SIZE);
     if (listener < 0) exit(EXIT_FAILURE);
 
     printf("Listening for incoming connections on %s\n", service);
+
+    char *begin;
+    begin = protocol_create_begin("John", "X");
+    printf("%s\n", begin);
+    begin = protocol_create_begin("Richards", "O");
+    printf("%s\n", begin);
+
 
     while (active) {
 
