@@ -88,21 +88,35 @@ int protocol_name(char *buf, int length, char **name)
     return 0;
 }
 
-char *protocol_create_begin(char *name, char *piece) {
-
-    const char* prefix = "BEGN|";
-    const char* delimiter = "|";
-    char* formatted_string;
+char *protocol_create_begin(char *name, char piece) {
+    
+    const char *prefix = "BEGN|";
+    const char *delimiter = "|";
+    char *formatted_string;
+    int sizeLength;
     int length;
 
-    // Calculate the length of the formatted string
-    length = strlen(prefix) + strlen(piece) + strlen(name) + strlen(delimiter) * 3 + 1;
+    // piece + | + name + |
+    int suffixLength = strlen(name) + 3;
+
+    // Get size of the length field
+    sizeLength = (suffixLength > 9) ? 2 : 1;
+
+    // Add 1 to length field for the bar after, and 1 for null terminator
+    length = strlen(prefix) + sizeLength + 1 + 1 + 1 + strlen(name) + 1 + 1;
+
+    // printf("%c\n", piece);
+    // printf("PrefixLength: %d\n", (int) strlen(prefix));
+    // printf("SuffixLength: %d\n", suffixLength);
+    // printf("SizeLength: %d\n", (int) sizeLength);
+    // printf("NameLength: %d\n", (int) strlen(name));
+    // printf("Length: %d\n", length);
 
     // Allocate memory for the formatted string
     formatted_string = (char*) malloc(length * sizeof(char));
 
     // Build the formatted string
-    sprintf(formatted_string, "%s%d%s%s%s%s%s", prefix, (int) strlen(piece) + (int) strlen(name) + (int) strlen(delimiter) * 2, delimiter, piece, delimiter, name, delimiter);
+    sprintf(formatted_string, "%s%d%s%c%s%s%s", prefix, suffixLength, delimiter, piece, delimiter, name, delimiter);
 
     return formatted_string;
 }
