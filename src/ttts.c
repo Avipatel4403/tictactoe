@@ -33,6 +33,7 @@ typedef struct Client {
     ConnectionData *con; //Players Connection
     char PIECE; // NULL X or O
     char *NAME; //players name
+    struct Client *opp;
 } Client;
 
 typedef struct Game {
@@ -73,20 +74,99 @@ void install_handlers(sigset_t* mask) {
 }
 
 //CHECKS
-char** nameList;
-int numOfPlayers;
+char** checkDUPLICATES;
+char* protocol(char* message);
+char checkBoard(char board[3][3]);
+int makeMove(char board[3][3], int row, int column, char piece);
+
 pthread_mutex_t queueLock;
 int curPlayers;
 Client *clientList[2];
 char* protocol(char* message);
-int checkBoard(char board[3][3]);
+char checkBoard(char board[3][3]);
 int makeMove(char board[3][3], int row, int column, char piece);
 
-// void CloseGAME(int resigned,char result, char* winner,Client *p1, Client *p2) {
-//     // Close file descriptors
-//     close(playerOne->con->fd);
-//     close(playerTwo->con->fd);
+int drawHandle(Game* game,Client* currentPlayer){
+    int bytes;
+    char buf[BUFSIZE];
+    write(currentPlayer->opp->con->fd,"DRAW|2|S|",9); 
+    while(1){
+        
+        if((bytes = read(currentPlayer->opp->con->fd, buf,BUFSIZE)) <= 0){
+            return 1;
+        }
+        if(protocol_check(buf,bytes) == 1){
+            write(currentPlayer->opp->con->fd, "INVL|23|Invalid Message Format|", 32);
+            continue;
+        }
+        if (strncmp(buf,"DRAW|",5)) {
+            if (buf[7] == 'A') {
 
+                return 1;
+            } 
+            else if (buf[7] == 'R') {
+                return 0;
+            } else {
+                write(currentPlayer->opp->con->fd, "INVL|23|Invalid Message Format|", 32);
+                continue;
+            }
+
+        } else {
+            if (strncmp(buf, "RSGN|", 5)){
+                return 1;
+            }
+            write(currentPlayer->opp->con->fd, "INVL|23|Invalid Message Format|", 32);
+
+            if ((bytes = read(currentPlayer->opp->con->fd,buf,BUFSIZE )) <= 0) {
+                return 1;
+            }
+            if (protocol_check(buf, bytes) == 1) {
+                write(currentPlayer->opp->con->fd, "INVL|23|Invalid Message Format|", 32);
+                continue;
+            }
+
+        }
+    }
+}
+
+void CloseGAME(Game* game, Client* winner, int resigned) {
+    //send Game
+    //get protocol
+    char* closing;
+
+
+    //PLAY ONE WON
+
+
+
+    //PLAY TWO WON 
+
+
+    //DRAW
+
+
+
+    write(game->one->con->fd,closing,BUFSIZ);
+    write(game->two->con->fd, closing, BUFSIZ);
+
+
+
+
+    // Close file descriptors
+    close(game->one->con->fd);
+    close(game->two->con->fd);
+    // Free dynamically allocated memory
+    free(game->one->NAME);
+    free(game->two->NAME);
+    free(game->one->con);
+    free(game->two->con);
+    free(game->one);
+    free(game->two);
+    free(game);
+    printf("Game ended\n");
+
+
+}
 //     // Free dynamically allocated memory
 //     free(playerOne->NAME);
 //     free(playerTwo->NAME);
@@ -106,124 +186,93 @@ void *play_game(void *arg)
     Client *playerOne = game->one;
     Client *playerTwo = game->two;
     playerOne->PIECE = 'X';
+    playerOne->opp = playerTwo;
     playerTwo->PIECE = 'O';
+    playerTwo->opp = playerOne;
+
+
+    //player one goes first
     Client* playerTurn = playerOne;
 
     printf("Game running!\n");
 
     //Sends Begin
     char *begin;
+    begin = NULL;
     begin = protocol_create_begin(playerOne->NAME, &playerOne->PIECE);
     write(playerOne->con->fd, begin, strlen(begin));
     begin = protocol_create_begin(playerTwo->NAME, &playerTwo->PIECE);
     write(playerTwo->con->fd, begin, strlen(begin));
+    free(begin);
 
-    // //Game Piece who won
-    // char result;
-    // char* winner;
-    // int gameEnded = 0;
-    // int turnComplete = 0;
-
-    // //-1= rejected
-    // //0 no request
-    // //1 request give
-    // //no need to have request accepted as it is end of game
-    // int drawRequest = 0;
+    //Game Piece who won
+    char result;
+    Client* winner;
+    int gameEnded = 0;
+    int turnComplete = 0;
     
+    //Player moves
+    while(!gameEnded){
 
-    // //Player moves
-    // while(!gameEnded){
+        //
+        if((bytes = read(playerTurn->con->fd, buf, BUFSIZE)) <= 0){
+            gameEnded = 1;
+            CloseGAME(game,playerTurn->opp,1);
+            continue;
+        }
 
-    //     //check request
-    //     //jump point for Invalid
-    //     INVALID:
-    //     bytes = read(playerTurn->con->fd, buf, BUFSIZE);
-    //     //someway to check 
-    //     printf("Read %s from Player %c \n", buf,playerTurn->PIECE);
+        //someway to check 
+        printf("Read %s from Player %c \n", buf,playerTurn->PIECE);
 
-    //     //Grab Message
-    //     if(protocol_check(buf,bytes) != 1){
-    //         goto INVALID;
-    //     }
+        //Grab Message
+        if(protocol_check(buf,bytes) == 1){
+            gameEnded = 1;
+            CloseGAME(game, playerTurn->opp, 1);
+            continue;
+        }
 
-    //     if(strncmp(buf,"DRAW",4) == 0){
-
-    //         if(drawRequest == 1){
-    //             if(buf[7] == 'A'){
-    //                 gameEnded = 1;
-    //                 result = 'D';
-    //                 break;
-    //             }
-
-    //             else if(buf[7] == 'R'){
+        if(strncmp(buf,"DRAW",4) == 0){
+            if(buf[7] == 'S'){
                     
-
-    //             }
-    //             else{
-    //                 write(playerTurn->con->fd,"INVL|23|Invalid Message Format|",32);
-
-    //             }
-
-    //         }
-    //         else{
-    //             //ask other player for 
-    //             if(playerTurn == playerOne){
-    //                 write(playerOne->con->fd,"DRAW|35|S|Other Player sent a draw request|",43);
-    //                 // bytes = read(playerOne->con->fd,buf,BUFSIZE);
-    //                 playerTurn = playerTwo;
-    //                 break;
-    //                 // //check other player
-    //                 // if(protocol_check(buf,bytes) != 1){
-    //                 //     write("INVL|23|Invalid Message Format|");  
-    //                 // }  
-    //             }
-    //             else{
-    //                 write(playerTwo->con->fd, "DRAW|35|S|Other Player sent a draw request|",43);
-    //                 playerTurn = playerTwo;
-    //                 break;
-    //                 // bytes = read(playerTwo->con->fd, buf, BUFSIZE);
-    //                 // if(buf[7] == 'A'){
-    //                 //     close(); 
-    //                 // }
-    //                 // else{
-    //                 // }
-    //                 // // check other player
-    //                 // if (protocol_check(buf, bytes) != 1) {
-    //                 //     write("INVL|23|Invalid Message Format|");
-    //                 // }
-    //             }
-    //         }
-    //     }
-    //     else if(strncmp(buf,"RSGN",4) == 0){
-    //         gameEnded = 1;
-    //         if(playerTurn == playerOne){
-    //             result = playerTwo->PIECE;
-    //             winner = playerTwo->NAME;
-    //         }
-    //         else{
-    //             result = playerOne->PIECE;
-    //             winner = playerOne->NAME;
-    //         }
-    //         break;
-    //     }
-    //     else if(strncmp(buf,"MOVE",4) == 0){
-    //         if(makeMove()){
-    //             //
-    //         }
-
-
-
-    //     }
-    //     checkBoard(game->board);
-    
-    
-    
-    
-    // //INVALID COMMAND
-    // else{
-    //     write(playerTurn->con->fd, "INVL|14|Wrong Command",22);
-    //     goto INVALID;
-    // }
+                if(drawHandle(game,playerTurn) == 1){
+                    gameEnded = 1;
+                    CloseGAME(game,winner,0);
+                    continue;
+                }
+                write(playerTurn->con->fd,"DRAW|2|R|",10);
+                continue;
+            
+            }
+            else{
+                write(playerTurn->con->fd,"INVL|18|No Draw Initiated|",27);
+                continue;
+            }
+        }
+        else if(strncmp(buf,"RSGN",4) == 0){
+            gameEnded = 1;
+            if(playerTurn == playerOne){
+                winner = playerTwo;
+            }
+            else{
+                winner = playerOne;
+            }
+            continue;
+        }
+        else if(strncmp(buf,"MOVE",4) == 0){
+            if(makeMove(game->board,buf[9] - 48,buf[11] - 48,playerTurn->PIECE) != 1){
+                write(playerTurn->con->fd, "INVL | 24 | That space is occupied.|", 37);
+                continue;
+            }
+            result = checkBoard(game->board);
+            if (result != DRAW || result != EMPTY) {
+                gameEnded = 1;
+            }
+        }
+        //INVALID COMMAND
+        else{
+            write(playerTurn->con->fd, "INVL|14|Wrong Command",22);
+            continue;
+        }
 
     // //change player
     // if(playerTurn == playerOne){
@@ -235,8 +284,8 @@ void *play_game(void *arg)
 
     // }
 
-    // //game
-    // CloseGAME(0, result, winner, playerOne, playerTwo);
+    //game
+    CloseGAME(game,winner,1);
 
 
     return NULL;
@@ -250,7 +299,7 @@ void *create_client(void *arg)
     char buffer[BUFSIZE];
     char *name;
     int bytes_read;
-    char *response;
+    int response;
 
     ConnectionData *con = arg;
 
@@ -265,12 +314,12 @@ void *create_client(void *arg)
             break;
         } else if (error == 1) {
             response = "INVL|34|Player name exceeds 20 characters|";
+            write(con->fd, response, strlen(response));
         } else if (error == 2) {
             response = "INVL|23|Invalid Message Format|";
+            write(con->fd, response, strlen(response));
             goto close_socket;
         }
-
-        write(con->fd, response, strlen(response));
     }
 
     char *wait = "WAIT|0|";
@@ -414,14 +463,14 @@ int open_listener(char* service, int queue_size)
 }
 
 int makeMove(char board[3][3],int row, int column,char piece) {
-    if(board[row][column] != EMPTY){
+    if(board[row][column] == EMPTY){
         board[row][column] = piece;
         return 1;
     }
     return 0;
 }
 
-int checkBoard(char board[3][3]) {
+char checkBoard(char board[3][3]) {
     //check rows 
     for(int i = 0;i < 3;i++){
         if (board[i][0] == board[i][1] && board[i][1] == board[i][2]) {
