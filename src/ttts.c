@@ -33,7 +33,7 @@ typedef struct Client {
     ConnectionData *con; //Players Connection
     char PIECE; // NULL X or O
     char *NAME; //players name
-    Client *opp;
+    struct Client *opp;
 } Client;
 
 typedef struct Game {
@@ -86,6 +86,7 @@ Client *clientList[2];
 
 int drawHandle(Game* game,Client* currentPlayer){
     int bytes;
+    char buf[BUFSIZE];
     write(currentPlayer->opp->con->fd,"DRAW|2|S|",9); 
     while(1){
         
@@ -98,35 +99,51 @@ int drawHandle(Game* game,Client* currentPlayer){
         }
         if (strncmp(buf,"DRAW|",5)) {
             if (buf[7] == 'A') {
-                gameEnded = 1;
+
                 return 1;
             } 
             else if (buf[7] == 'R') {
                 return 0;
             } else {
-                
+                write(currentPlayer->opp->con->fd, "INVL|23|Invalid Message Format|", 32);
                 continue;
             }
 
         } else {
-            // ask other player for
-            if () {
-                if ((bytes = read(currentPlayer->opp->con->fd, )) <= 0) {
-                    return 1;
-                }
-                if (protocol_check(buf, bytes) == 1) {
-                    write(->con->fd, "INVL|23|Invalid Message Format|", 32);
-                    continue;
-                }
+            if (strncmp(buf, "RSGN|", 5)){
+                return 1;
             }
+            write(currentPlayer->opp->con->fd, "INVL|23|Invalid Message Format|", 32);
+
+            if ((bytes = read(currentPlayer->opp->con->fd,buf,BUFSIZE )) <= 0) {
+                return 1;
+            }
+            if (protocol_check(buf, bytes) == 1) {
+                write(currentPlayer->opp->con->fd, "INVL|23|Invalid Message Format|", 32);
+                continue;
+            }
+
         }
     }
 }
 
-void CloseGAME(Game* game, char*winner, int resigned) {
+void CloseGAME(Game* game, Client* winner, int resigned) {
     //send Game
     //get protocol
     char* closing;
+
+
+    //PLAY ONE WON
+
+
+
+    //PLAY TWO WON 
+
+
+    //DRAW
+
+
+
     write(game->one->con->fd,closing,BUFSIZ);
     write(game->two->con->fd, closing, BUFSIZ);
 
@@ -157,52 +174,62 @@ void *play_game(void *arg)
     Client *playerOne = game->one;
     Client *playerTwo = game->two;
     playerOne->PIECE = 'X';
-    playerOne->opp = playerTwo->NAME;
+    playerOne->opp = playerTwo;
     playerTwo->PIECE = 'O';
-    playerTwo->opp = playerOne->NAME;
+    playerTwo->opp = playerOne;
 
+
+    //player one goes first
     Client* playerTurn = playerOne;
 
     printf("Game running!\n");
 
     //Sends Begin
     char *begin;
+    begin = NULL;
     begin = protocol_create_begin(playerOne->NAME, &playerOne->PIECE);
     write(playerOne->con->fd, begin, strlen(begin));
     begin = protocol_create_begin(playerTwo->NAME, &playerTwo->PIECE);
     write(playerTwo->con->fd, begin, strlen(begin));
+    free(begin);
 
     //Game Piece who won
     char result;
-    char* winner;
+    Client* winner;
     int gameEnded = 0;
     int turnComplete = 0;
-
-    //-1= rejected
-    //0 no request
-    //1 request give
-    //no need to have request accepted as it is end of game
-    int drawRequest = 0;
     
     //Player moves
     while(!gameEnded){
 
-        //check request
-        //jump point for Invalid 
+        //
         if((bytes = read(playerTurn->con->fd, buf, BUFSIZE)) <= 0){
+            gameEnded = 1;
             CloseGAME(game,playerTurn->opp,1);
+            continue;
         }
+
         //someway to check 
         printf("Read %s from Player %c \n", buf,playerTurn->PIECE);
 
         //Grab Message
         if(protocol_check(buf,bytes) == 1){
+            gameEnded = 1;
             CloseGAME(game, playerTurn->opp, 1);
+            continue;
         }
 
         if(strncmp(buf,"DRAW",4) == 0){
             if(buf[7] == 'S'){
-                drawHandle(game,buf[7],playerTurn);
+                    
+                if(drawHandle(game,playerTurn) == 1){
+                    gameEnded = 1;
+                    CloseGAME(game,winner,0);
+                    continue;
+                }
+                write(playerTurn->con->fd,"DRAW|2|R|",10);
+                continue;
+            
             }
             else{
                 write(playerTurn->con->fd,"INVL|18|No Draw Initiated|",27);
@@ -212,12 +239,12 @@ void *play_game(void *arg)
         else if(strncmp(buf,"RSGN",4) == 0){
             gameEnded = 1;
             if(playerTurn == playerOne){
-                winner = playerTwo->NAME;
+                winner = playerTwo;
             }
             else{
-                winner = playerOne->NAME;
+                winner = playerOne;
             }
-            break;
+            continue;
         }
         else if(strncmp(buf,"MOVE",4) == 0){
             if(makeMove(game->board,buf[9] - 48,buf[11] - 48,playerTurn->PIECE) != 1){
