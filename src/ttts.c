@@ -199,9 +199,9 @@ void *play_game(void *arg)
     //Sends Begin
     char *begin;
     begin = NULL;
-    begin = protocol_create_begin(playerOne->NAME, &playerOne->PIECE);
+    begin = protocol_create_begin(playerOne->NAME, playerOne->PIECE);
     write(playerOne->con->fd, begin, strlen(begin));
-    begin = protocol_create_begin(playerTwo->NAME, &playerTwo->PIECE);
+    begin = protocol_create_begin(playerTwo->NAME, playerTwo->PIECE);
     write(playerTwo->con->fd, begin, strlen(begin));
     free(begin);
 
