@@ -273,6 +273,7 @@ void *play_game(void *arg)
             write(playerTurn->con->fd, "INVL|14|Wrong Command",22);
             continue;
         }
+    }
 
     // //change player
     // if(playerTurn == playerOne){
@@ -299,7 +300,7 @@ void *create_client(void *arg)
     char buffer[BUFSIZE];
     char *name;
     int bytes_read;
-    int response;
+    char* response;
 
     ConnectionData *con = arg;
 
