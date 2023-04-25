@@ -337,7 +337,7 @@ void *create_client(void *arg)
             exit(EXIT_FAILURE);
         }
 
-        Game *game = (Game *) malloc(sizeof(Game*));
+        Game *game = (Game *) malloc(sizeof(Game));
         //Could maybe add checker here if malloc worked?
         game->one = clientList[0];
         game->two = clientList[1];
@@ -387,11 +387,7 @@ int main(int argc, char **argv)
 
     printf("Listening for incoming connections on %s\n", service);
 
-    char *begin;
-    begin = protocol_create_begin("John", "X");
-    printf("%s\n", begin);
-    begin = protocol_create_begin("Richards", "O");
-    printf("%s\n", begin);
+
 
 
     while (active) {
