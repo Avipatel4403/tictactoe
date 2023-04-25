@@ -132,23 +132,23 @@ int drawHandle(Game* game,Client* currentPlayer){
 void CloseGAME(Game* game, Client* winner, int resigned) {
     //send Game
     //get protocol
-    char* closing;
+    char* win;
+    char* loser;
 
 
     //PLAY ONE WON
-
-
-
-    //PLAY TWO WON 
-
-
-    //DRAW
-
-
-
-    write(game->one->con->fd,closing,BUFSIZ);
-    write(game->two->con->fd, closing, BUFSIZ);
-
+    if(winner == game->one){
+        write(game->one->con->fd,win,strlen(win));
+        write(game->two->con->fd, loser, strlen(loser));
+    }
+    else if(winner == game->two){
+        write(game->one->con->fd, loser, strlen(loser));
+        write(game->two->con->fd, win, strlen(win));
+    }
+    else{
+        write(game->one->con->fd, closing, strlen(closing));
+        write(game->two->con->fd, closing, strlen(closing));
+    }
 
 
 
