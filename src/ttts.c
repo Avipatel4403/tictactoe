@@ -52,6 +52,9 @@ void handler(int signum) {
     active = 0;
 }
 
+
+
+
 // set up signal handlers for primary thread
 // return a mask blocking those signals for worker threads
 // FIXME should check whether any of these actually succeeded
@@ -69,7 +72,8 @@ void install_handlers(sigset_t* mask) {
     sigaddset(mask, SIGTERM);
 }
 
-//check board
+//CHECKS
+char** checkDUPLICATES;
 char* protocol(char* message);
 int checkBoard(char board[3][3]);
 int makeMove(char board[3][3], int row, int column, char piece);
@@ -77,6 +81,22 @@ int makeMove(char board[3][3], int row, int column, char piece);
     pthread_mutex_t queueLock;
 int curPlayers;
 Client *clientList[2];
+
+void CloseGAME(int resigned,char result, char* winner,Client *p1, Client *p2) {
+    // Close file descriptors
+    close(playerOne->con->fd);
+    close(playerTwo->con->fd);
+
+    // Free dynamically allocated memory
+    free(playerOne->NAME);
+    free(playerTwo->NAME);
+    free(playerOne->con);
+    free(playerTwo->con);
+    free(playerOne);
+    free(playerTwo);
+    free(game);
+    printf("Game ended\n");
+}
 
 void *play_game(void *arg) 
 {   
@@ -91,89 +111,134 @@ void *play_game(void *arg)
 
     printf("Game running!\n");
 
+    //Sends Begin
     char *begin;
     begin = protocol_create_begin(playerOne->NAME, &playerOne->PIECE);
     write(playerOne->con->fd, begin, strlen(begin));
     begin = protocol_create_begin(playerTwo->NAME, &playerTwo->PIECE);
     write(playerTwo->con->fd, begin, strlen(begin));
 
+    //Game Piece who won
     char result;
+    char* winner;
+    int gameEnded = 0;
+    int turnComplete = 0;
 
-    // while(1){
+    //-1= rejected
+    //0 no request
+    //1 request give
+    //no need to have request accepted as it is end of game
+    int drawRequest = 0;
+    
 
-    //     //check request
-    //     bytes = read(playerTurn->con->fd, buf, BUFSIZE);
-    //     //someway to check 
-    //     printf("Read %s from Player %c \n", buf,playerTurn->PIECE);
+    //Player moves
+    while(!gameEnded){
 
-    //     //check 
+        //check request
+        //jump point for Invalid
+        INVALID:
+        bytes = read(playerTurn->con->fd, buf, BUFSIZE);
+        //someway to check 
+        printf("Read %s from Player %c \n", buf,playerTurn->PIECE);
 
-    //     //if draw
-    //     DRAWN:
-    //     if(){
+        //Grab Message
+        if(protocol_check(buf,bytes) != 1){
+            goto INVALID;
+        }
 
-    //     }
-    //     //if resgn
-    //     RESIGN:
-    //     else if(){
-    //         break;
-            
-    //     }
-        
-    //     // if move
-    //     while (makeMove(game->board, row, column, playerTurn->PIECE) != 1) {
-    //         write(playerTurn->con->fd, "INVL|24|That space is occupied.|", BUFSIZE);
-    //         bytes = read(playerTurn->con->fd, buf, BUFSIZE);
-    //         // check message
-    //         if () {
-    //             goto DRAWN:
+        if(strncmp(buf,"DRAW",4) == 0){
 
-    //         } 
-    //         else if {
-    //             goto RESIGN;
-    //         }
-    //     }
+            if(drawRequest == 1){
+                if(buf[7] == 'A'){
+                    gameEnded = 1;
+                    result = 'D';
+                    break;
+                }
+
+                else if(buf[7] == 'R'){
+                    
+
+                }
+                else{
+                    write(playerTurn->con->fd,"INVL|23|Invalid Message Format|",32);
+
+                }
+
+            }
+            else{
+                //ask other player for 
+                if(playerTurn == playerOne){
+                    write(playerOne->con->fd,"DRAW|35|S|Other Player sent a draw request|",43);
+                    // bytes = read(playerOne->con->fd,buf,BUFSIZE);
+                    playerTurn = playerTwo;
+                    break;
+                    // //check other player
+                    // if(protocol_check(buf,bytes) != 1){
+                    //     write("INVL|23|Invalid Message Format|");  
+                    // }  
+                }
+                else{
+                    write(playerTwo->con->fd, "DRAW|35|S|Other Player sent a draw request|",43);
+                    playerTurn = playerTwo;
+                    break;
+                    // bytes = read(playerTwo->con->fd, buf, BUFSIZE);
+                    // if(buf[7] == 'A'){
+                    //     close(); 
+                    // }
+                    // else{
+                    // }
+                    // // check other player
+                    // if (protocol_check(buf, bytes) != 1) {
+                    //     write("INVL|23|Invalid Message Format|");
+                    // }
+                }
+            }
+        }
+        else if(strncmp(buf,"RSGN",4) == 0){
+            gameEnded = 1;
+            if(playerTurn == playerOne){
+                result = playerTwo->PIECE;
+                winner = playerTwo->NAME;
+            }
+            else{
+                result = playerOne->PIECE;
+                winner = playerOne->NAME;
+            }
+            break;
+        }
+        else if(strncmp(buf,"MOVE",4) == 0){
+            if(makeMove()){
+                //
+            }
 
 
 
-    //     //make move
-    //     if (checkBoard(game->board) == 'X' || checkBoard(game->board) == 'O') {
-    //         break;
-    //     }
+        }
+        checkBoard(game->board);
+    
+    
+    
+    
+    //INVALID COMMAND
+    else{
+        write(playerTurn->con->fd, "INVL|14|Wrong Command",22);
+        goto INVALID;
+    }
 
-    //     //change player
-    //     if(playerTurn == playerOne){
-    //         playerTurn = playerTwo;
-    //     }
-    //     else{
-    //         playerTurn = playerOne;
-    //     }
+    //change player
+    if(playerTurn == playerOne){
+        playerTurn = playerTwo;
+    }
+    else{
+        playerTurn = playerOne;
+    }
+
+}
+
+    //game
+    CloseGAME(0, result, winner, playerOne, playerTwo);
 
 
-
-    // }
-
-
-
-
-
-
-
-
-
-    // Close file descriptors
-    close(playerOne->con->fd);
-    close(playerTwo->con->fd);
-
-    // Free dynamically allocated memory
-    free(playerOne->NAME);
-    free(playerTwo->NAME);
-    free(playerOne->con);
-    free(playerTwo->con);
-    free(playerOne);
-    free(playerTwo);
-    free(game);
-    printf("Game ended\n");
     return NULL;
 }
 
