@@ -73,30 +73,30 @@ void install_handlers(sigset_t* mask) {
 }
 
 //CHECKS
-char** checkDUPLICATES;
+char** nameList;
+int numOfPlayers;
+pthread_mutex_t queueLock;
+int curPlayers;
+Client *clientList[2];
 char* protocol(char* message);
 int checkBoard(char board[3][3]);
 int makeMove(char board[3][3], int row, int column, char piece);
 
-    pthread_mutex_t queueLock;
-int curPlayers;
-Client *clientList[2];
+// void CloseGAME(int resigned,char result, char* winner,Client *p1, Client *p2) {
+//     // Close file descriptors
+//     close(playerOne->con->fd);
+//     close(playerTwo->con->fd);
 
-void CloseGAME(int resigned,char result, char* winner,Client *p1, Client *p2) {
-    // Close file descriptors
-    close(playerOne->con->fd);
-    close(playerTwo->con->fd);
-
-    // Free dynamically allocated memory
-    free(playerOne->NAME);
-    free(playerTwo->NAME);
-    free(playerOne->con);
-    free(playerTwo->con);
-    free(playerOne);
-    free(playerTwo);
-    free(game);
-    printf("Game ended\n");
-}
+//     // Free dynamically allocated memory
+//     free(playerOne->NAME);
+//     free(playerTwo->NAME);
+//     free(playerOne->con);
+//     free(playerTwo->con);
+//     free(playerOne);
+//     free(playerTwo);
+//     free(game);
+//     printf("Game ended\n");
+// }
 
 void *play_game(void *arg) 
 {   
@@ -118,125 +118,125 @@ void *play_game(void *arg)
     begin = protocol_create_begin(playerTwo->NAME, &playerTwo->PIECE);
     write(playerTwo->con->fd, begin, strlen(begin));
 
-    //Game Piece who won
-    char result;
-    char* winner;
-    int gameEnded = 0;
-    int turnComplete = 0;
+    // //Game Piece who won
+    // char result;
+    // char* winner;
+    // int gameEnded = 0;
+    // int turnComplete = 0;
 
-    //-1= rejected
-    //0 no request
-    //1 request give
-    //no need to have request accepted as it is end of game
-    int drawRequest = 0;
+    // //-1= rejected
+    // //0 no request
+    // //1 request give
+    // //no need to have request accepted as it is end of game
+    // int drawRequest = 0;
     
 
-    //Player moves
-    while(!gameEnded){
+    // //Player moves
+    // while(!gameEnded){
 
-        //check request
-        //jump point for Invalid
-        INVALID:
-        bytes = read(playerTurn->con->fd, buf, BUFSIZE);
-        //someway to check 
-        printf("Read %s from Player %c \n", buf,playerTurn->PIECE);
+    //     //check request
+    //     //jump point for Invalid
+    //     INVALID:
+    //     bytes = read(playerTurn->con->fd, buf, BUFSIZE);
+    //     //someway to check 
+    //     printf("Read %s from Player %c \n", buf,playerTurn->PIECE);
 
-        //Grab Message
-        if(protocol_check(buf,bytes) != 1){
-            goto INVALID;
-        }
+    //     //Grab Message
+    //     if(protocol_check(buf,bytes) != 1){
+    //         goto INVALID;
+    //     }
 
-        if(strncmp(buf,"DRAW",4) == 0){
+    //     if(strncmp(buf,"DRAW",4) == 0){
 
-            if(drawRequest == 1){
-                if(buf[7] == 'A'){
-                    gameEnded = 1;
-                    result = 'D';
-                    break;
-                }
+    //         if(drawRequest == 1){
+    //             if(buf[7] == 'A'){
+    //                 gameEnded = 1;
+    //                 result = 'D';
+    //                 break;
+    //             }
 
-                else if(buf[7] == 'R'){
+    //             else if(buf[7] == 'R'){
                     
 
-                }
-                else{
-                    write(playerTurn->con->fd,"INVL|23|Invalid Message Format|",32);
+    //             }
+    //             else{
+    //                 write(playerTurn->con->fd,"INVL|23|Invalid Message Format|",32);
 
-                }
+    //             }
 
-            }
-            else{
-                //ask other player for 
-                if(playerTurn == playerOne){
-                    write(playerOne->con->fd,"DRAW|35|S|Other Player sent a draw request|",43);
-                    // bytes = read(playerOne->con->fd,buf,BUFSIZE);
-                    playerTurn = playerTwo;
-                    break;
-                    // //check other player
-                    // if(protocol_check(buf,bytes) != 1){
-                    //     write("INVL|23|Invalid Message Format|");  
-                    // }  
-                }
-                else{
-                    write(playerTwo->con->fd, "DRAW|35|S|Other Player sent a draw request|",43);
-                    playerTurn = playerTwo;
-                    break;
-                    // bytes = read(playerTwo->con->fd, buf, BUFSIZE);
-                    // if(buf[7] == 'A'){
-                    //     close(); 
-                    // }
-                    // else{
-                    // }
-                    // // check other player
-                    // if (protocol_check(buf, bytes) != 1) {
-                    //     write("INVL|23|Invalid Message Format|");
-                    // }
-                }
-            }
-        }
-        else if(strncmp(buf,"RSGN",4) == 0){
-            gameEnded = 1;
-            if(playerTurn == playerOne){
-                result = playerTwo->PIECE;
-                winner = playerTwo->NAME;
-            }
-            else{
-                result = playerOne->PIECE;
-                winner = playerOne->NAME;
-            }
-            break;
-        }
-        else if(strncmp(buf,"MOVE",4) == 0){
-            if(makeMove()){
-                //
-            }
+    //         }
+    //         else{
+    //             //ask other player for 
+    //             if(playerTurn == playerOne){
+    //                 write(playerOne->con->fd,"DRAW|35|S|Other Player sent a draw request|",43);
+    //                 // bytes = read(playerOne->con->fd,buf,BUFSIZE);
+    //                 playerTurn = playerTwo;
+    //                 break;
+    //                 // //check other player
+    //                 // if(protocol_check(buf,bytes) != 1){
+    //                 //     write("INVL|23|Invalid Message Format|");  
+    //                 // }  
+    //             }
+    //             else{
+    //                 write(playerTwo->con->fd, "DRAW|35|S|Other Player sent a draw request|",43);
+    //                 playerTurn = playerTwo;
+    //                 break;
+    //                 // bytes = read(playerTwo->con->fd, buf, BUFSIZE);
+    //                 // if(buf[7] == 'A'){
+    //                 //     close(); 
+    //                 // }
+    //                 // else{
+    //                 // }
+    //                 // // check other player
+    //                 // if (protocol_check(buf, bytes) != 1) {
+    //                 //     write("INVL|23|Invalid Message Format|");
+    //                 // }
+    //             }
+    //         }
+    //     }
+    //     else if(strncmp(buf,"RSGN",4) == 0){
+    //         gameEnded = 1;
+    //         if(playerTurn == playerOne){
+    //             result = playerTwo->PIECE;
+    //             winner = playerTwo->NAME;
+    //         }
+    //         else{
+    //             result = playerOne->PIECE;
+    //             winner = playerOne->NAME;
+    //         }
+    //         break;
+    //     }
+    //     else if(strncmp(buf,"MOVE",4) == 0){
+    //         if(makeMove()){
+    //             //
+    //         }
 
 
 
-        }
-        checkBoard(game->board);
+    //     }
+    //     checkBoard(game->board);
     
     
     
     
-    //INVALID COMMAND
-    else{
-        write(playerTurn->con->fd, "INVL|14|Wrong Command",22);
-        goto INVALID;
-    }
+    // //INVALID COMMAND
+    // else{
+    //     write(playerTurn->con->fd, "INVL|14|Wrong Command",22);
+    //     goto INVALID;
+    // }
 
-    //change player
-    if(playerTurn == playerOne){
-        playerTurn = playerTwo;
-    }
-    else{
-        playerTurn = playerOne;
-    }
+    // //change player
+    // if(playerTurn == playerOne){
+    //     playerTurn = playerTwo;
+    // }
+    // else{
+    //     playerTurn = playerOne;
+    // }
 
-}
+    // }
 
-    //game
-    CloseGAME(0, result, winner, playerOne, playerTwo);
+    // //game
+    // CloseGAME(0, result, winner, playerOne, playerTwo);
 
 
     return NULL;
@@ -249,28 +249,28 @@ void *create_client(void *arg)
 
     char buffer[BUFSIZE];
     char *name;
-    int bytes;
+    int bytes_read;
+    char *response;
 
     ConnectionData *con = arg;
 
-    bytes = read(con->fd, buffer, BUFSIZE);
-    printf("Read: %s\n", buffer);
+    while (1) {
+        bytes_read = read(con->fd, buffer, BUFSIZE);
+        if (bytes_read <= 0) {
+            goto close_socket;
+        }
+        printf("Read: %s\n", buffer);
+        int error = protocol_name(&buffer[0], bytes_read, &name);
+        if (error == 0) {
+            break;
+        } else if (error == 1) {
+            response = "INVL|34|Player name exceeds 20 characters|";
+        } else if (error == 2) {
+            response = "INVL|23|Invalid Message Format|";
+            goto close_socket;
+        }
 
-    while((error = protocol_name(&buffer[0], bytes, &name)) != 0) {
-        if(error == 1) {
-            char *invalid = "INVL|34|Player name exceeds 20 characters|";
-            printf("Size of Invalid: %d\n", (int) strlen(invalid));
-            write(con->fd, invalid, strlen(invalid));
-            read(con->fd, buffer, BUFSIZE);
-            printf("Read: %s\n", buffer);
-            continue;
-        }
-        if(error == 2) {
-            char* malicious = "INVL|23|Invalid Message Format|";
-            write(con->fd, malicious, strlen(malicious));
-            close(con->fd);
-            return NULL;
-        }
+        write(con->fd, response, strlen(response));
     }
 
     char *wait = "WAIT|0|";
@@ -283,54 +283,41 @@ void *create_client(void *arg)
     client->con = con;
     client->NAME = name;
 
-    printf("Bytes: %d\n", bytes);
+    if (curPlayers == 0) {
+        //If there are no players waiting, add the client to the list
+        clientList[curPlayers++] = client;
+        printf("Player %s is waiting for an opponent\n", client->NAME);
+    } else {
 
-    //Add client to list
-    clientList[curPlayers] = client;
-    curPlayers++;
-    printf("Cur Players: %d\n", curPlayers);
-
-    if (curPlayers == 2) {
-
+        // If there is another player waiting, create a new game
+        Client *other = clientList[0];
         curPlayers = 0;
 
-        error = pthread_sigmask(SIG_BLOCK, &mask, NULL);
-        if (error != 0) {
-            fprintf(stderr, "sigmask: %s\n", strerror(error));
-            exit(EXIT_FAILURE);
-        }
+        pthread_sigmask(SIG_BLOCK, &mask, NULL);
 
-        Game *game = (Game *) malloc(sizeof(Game*));
-        //Could maybe add checker here if malloc worked?
-        game->one = clientList[0];
-        game->two = clientList[1];
+        Game *game = malloc(sizeof(Game));  
+        game->one = client;
+        game->two = other;
 
-        error = pthread_create(&tid, NULL, play_game, (void*) game);
-        if (error != 0) {
-            fprintf(stderr, "pthread_create: %s\n", strerror(error));
-            close(clientList[0]->con->fd);
-            close(clientList[1]->con->fd);
-            free(clientList[0]->NAME);
-            free(clientList[1]->NAME);
-            free(clientList[0]);
-            free(clientList[1]);
-            free(game);
-            pthread_mutex_unlock(&queueLock);
-            return NULL;
-        }
+        //Create and run thread for playing the game
+        pthread_create(&tid, NULL, play_game, (void*) game);
 
-        // automatically clean up child threads once they terminate
+        //Automatically clean up child threads once they terminate
         pthread_detach(tid);
 
-        // unblock handled signals
-        error = pthread_sigmask(SIG_UNBLOCK, &mask, NULL);
-        if (error != 0) {
-            fprintf(stderr, "sigmask: %s\n", strerror(error));
-            exit(EXIT_FAILURE);
-        }
+        //Unblock handled signals
+        pthread_sigmask(SIG_UNBLOCK, &mask, NULL);
+
+        printf("Game started between %s and %s\n", client->NAME, other->NAME);
     }
+
     pthread_mutex_unlock(&queueLock);
     printf("Done creating Client for %s\n", client->NAME);
+    return NULL;
+
+    close_socket:
+    close(con->fd);
+    free(con);
     return NULL;
 }
 
@@ -339,42 +326,31 @@ int main(int argc, char **argv)
     ConnectionData *con;
     int error;
     pthread_t tid;
-
-    install_handlers(&mask);
-
-
     char* service = argc == 2 ? argv[1] : "15000";
 
+    install_handlers(&mask);
     int listener = open_listener(service, QUEUE_SIZE);
     if (listener < 0) exit(EXIT_FAILURE);
 
     printf("Listening for incoming connections on %s\n", service);
 
-    char *begin;
-    begin = protocol_create_begin("John", "X");
-    printf("%s\n", begin);
-    begin = protocol_create_begin("Richards", "O");
-    printf("%s\n", begin);
-
-
     while (active) {
-
-        con = (ConnectionData*)malloc(sizeof(ConnectionData));
+        //Accept a new connection
+        con = (ConnectionData*) malloc(sizeof(ConnectionData));
         con->addr_len = sizeof(struct sockaddr_storage);
-        con->fd = accept(listener,
-                         (struct sockaddr*)&con->addr,
-                         &con->addr_len);
+        con->fd = accept(listener,(struct sockaddr*)&con->addr,&con->addr_len);
+
+        //Check for errors in connection acceptance
         if (con->fd < 0) 
         {
             perror("accept");
             free(con);
-            // TODO check for specific error conditions
             continue;
         }
 
+        //Create a new thread to handle the connection
         pthread_create(&tid, NULL, create_client, (void *) con);
         pthread_detach(tid);
-        
     }
 
     puts("Shutting down");
