@@ -43,7 +43,7 @@ int connect_inet(char *host, char *service) {
 
 #define BUFSIZE 512
 
-
+int player;
 
 int main(int argc, char **argv) {
 
@@ -77,10 +77,12 @@ int main(int argc, char **argv) {
     printf("Data Received from Server: %s\n", buffer);
 
     if(buffer[7] == 'X') {
+        player = 'X';
         printf("You are first, write a message\n");
         memset(buffer, 0, BUFSIZE);
         goto Write;
     } else { 
+        player = 'O';
         printf("You are second, waiting for opponent\n");
         memset(buffer, 0, BUFSIZE);
         goto Read; }
@@ -89,9 +91,18 @@ int main(int argc, char **argv) {
         Read:
         bytes = read(sock, buffer, BUFSIZE);
         if(bytes == 0) {
-            break;`
+            break;
         }
         printf("Data Received from Server: %s\n", buffer);
+    
+        if (strncmp(buffer, "MOVD|", 5) == 0) {
+            if(player == (int) buffer[8]) {
+                memset(buffer, 0, BUFSIZE);
+                goto Read;
+            } else {
+                printf("Opponent has moved, your turn:\n");
+            }
+        }
         memset(buffer, 0, BUFSIZE);
 
         Write:

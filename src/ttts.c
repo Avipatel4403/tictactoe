@@ -16,7 +16,7 @@
 
 //Defintions
 #define QUEUE_SIZE 8
-#define EMPTY 0 //Empty Space on the board
+#define EMPTY '.' //Empty Space on the board
 #define X 1 //Game Status: X is the winner
 #define O 2 //Games Status: O is the winner
 #define DRAW 3 //Self Explanatory
@@ -163,6 +163,11 @@ void *play_game(void *arg)
     playerTwo->PIECE = 'O';
     playerTwo->opp = playerOne;
 
+    for(int i = 0; i < 3; i++) {
+        for(int j = 0; j < 3; j++) {
+            game->board[i][j] = EMPTY;
+        }
+    }
 
     //player one goes first
     Client* playerTurn = playerOne;
@@ -214,16 +219,18 @@ void *play_game(void *arg)
         }
         else if(strncmp(buf,"RSGN",4) == 0){
             gameEnded = 1;
-            write(playerTurn->opp->con->fd, "OVER|28|W|Opponent has disconnected|", 37);
+            write(playerTurn->con->fd, "OVER|20|L|You have resigned|", 29);
+            write(playerTurn->opp->con->fd, "OVER|24|W|Opponent has resigned|", 33);
             continue;
         }
         else if(strncmp(buf,"MOVE",4) == 0){
+
             if(makeMove(game->board,buf[9] - 48,buf[11] - 48,playerTurn->PIECE) != 1){
                 write(playerTurn->con->fd, "INVL|24|That space is occupied.|", 33);
-                continue;
+                continue; 
             }
             result = checkBoard(game->board);
-            if (result != DRAW || result != EMPTY) {
+            if (result == 'X' || result == 'O') {
                 gameEnded = 1;
                 write(playerTurn->con->fd,"OVER|10|W|YOU WON|",19);
                 write(playerTurn->opp->con->fd, "OVER|11|L|YOU LOSE|",20);
@@ -328,7 +335,6 @@ void *create_client(void *arg)
         }
         printf("Read: %s\n", buffer);
         int error = protocol_name(&buffer[0], bytes_read, &name);
-        printf("Error: %d\n", error);
         if (error == 0) {
             break;
         }
@@ -490,7 +496,7 @@ int open_listener(char* service, int queue_size)
 }
 
 int makeMove(char board[3][3],int row, int column,char piece) {
-    if(board[row][column] == EMPTY){
+    if(board[--row][--column] == EMPTY){
         board[row][column] = piece;
         return 1;
     }
@@ -515,7 +521,7 @@ char checkBoard(char board[3][3]) {
 
     //check columns
     for (int i = 0; i < 3; i++) {
-        if (board[0][i] == board[1][i] && board[0][i] == board[i][2]) {
+        if (board[0][i] == board[1][i] && board[0][i] == board[2][i]) {
             return board[0][i];
         }
     }
