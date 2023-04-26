@@ -86,75 +86,54 @@ char* protocol(char* message);
 char checkBoard(char board[3][3]);
 int makeMove(char board[3][3], int row, int column, char piece);
 
-int drawHandle(Game* game,Client* currentPlayer){
+int drawHandle(Game* game,Client* curPlayer){
+
     int bytes;
     char buf[BUFSIZE];
-    write(currentPlayer->opp->con->fd,"DRAW|2|S|",9); 
+    write(curPlayer->opp->con->fd,"DRAW|2|S|",9); 
+
     while(1){
         
-        if((bytes = read(currentPlayer->opp->con->fd, buf,BUFSIZE)) <= 0){
+        if((bytes = read(curPlayer->opp->con->fd, buf,BUFSIZE)) <= 0){
+            write(curPlayer->con->fd,"OVER|28|W|Opponent has disconnected|", 37);
             return 1;
         }
+
+        // Player sent something malicious
         if(protocol_check(buf,bytes) == 1){
-            write(currentPlayer->opp->con->fd, "INVL|23|Invalid Message Format|", 32);
-            continue;
+            write(curPlayer->con->fd,"OVER|28|W|Opponent was kicked", 37);
+            return 1;
         }
+
         if (strncmp(buf,"DRAW|",5)) {
             if (buf[7] == 'A') {
-
+                write(curPlayer->con->fd, "OVER|30|D|Both players agreed to draw|", 39);
+                write(curPlayer->opp->con->fd, "OVER|30|D|Both players agreed to draw|", 39);
                 return 1;
             } 
             else if (buf[7] == 'R') {
+                write(curPlayer->con->fd, "DRAW|2|R|", 10);
                 return 0;
             } else {
-                write(currentPlayer->opp->con->fd, "INVL|23|Invalid Message Format|", 32);
+                write(curPlayer->opp->con->fd, "INVL|23|Draw already initiated|", 32);
                 continue;
             }
-
-        } else {
-            if (strncmp(buf, "RSGN|", 5)){
-                return 1;
-            }
-            write(currentPlayer->opp->con->fd, "INVL|23|Invalid Message Format|", 32);
-
-            if ((bytes = read(currentPlayer->opp->con->fd,buf,BUFSIZE )) <= 0) {
-                return 1;
-            }
-            if (protocol_check(buf, bytes) == 1) {
-                write(currentPlayer->opp->con->fd, "INVL|23|Invalid Message Format|", 32);
-                continue;
-            }
-
+        }
+        else {
+            write(curPlayer->opp->con->fd, "INVL|29|Draw initiated, must respond|", 38);
+            continue;
         }
     }
 }
 
-void CloseGAME(Game* game, Client* winner, int resigned) {
-    //send Game
-    //get protocol
-    char* closing;
+void CloseGAME(Game* game) {
 
-
-    //PLAY ONE WON
-
-
-
-    //PLAY TWO WON 
-
-
-    //DRAW
-
-
-
-    write(game->one->con->fd,closing,BUFSIZ);
-    write(game->two->con->fd, closing, BUFSIZ);
-
-
-
+    printf("Game ended betwee %s and %s\n", game->one->NAME, game->two->NAME);
 
     // Close file descriptors
     close(game->one->con->fd);
     close(game->two->con->fd);
+
     // Free dynamically allocated memory
     free(game->one->NAME);
     free(game->two->NAME);
@@ -163,20 +142,7 @@ void CloseGAME(Game* game, Client* winner, int resigned) {
     free(game->one);
     free(game->two);
     free(game);
-    printf("Game ended\n");
-
-
 }
-//     // Free dynamically allocated memory
-//     free(playerOne->NAME);
-//     free(playerTwo->NAME);
-//     free(playerOne->con);
-//     free(playerTwo->con);
-//     free(playerOne);
-//     free(playerTwo);
-//     free(game);
-//     printf("Game ended\n");
-// }
 
 void *play_game(void *arg) 
 {   
@@ -214,39 +180,31 @@ void *play_game(void *arg)
     //Player moves
     while(!gameEnded){
 
-        //
+        // Read from client, if disconnected, end game and declare opponent as winner
         if((bytes = read(playerTurn->con->fd, buf, BUFSIZE)) <= 0){
+            write(playerTurn->opp->con->fd,"OVER|28|W|Opponent has disconnected|", 37);
             gameEnded = 1;
-            CloseGAME(game,playerTurn->opp,1);
             continue;
-        }
+        } 
 
-        //someway to check 
         printf("Read %s from Player %c \n", buf,playerTurn->PIECE);
 
-        //Grab Message
+        // Check if message follows protocol, kick player and end game if not
         if(protocol_check(buf,bytes) == 1){
+            write(playerTurn->opp->con->fd,"OVER|28|W|Opponent was kicked", 37);
             gameEnded = 1;
-            CloseGAME(game, playerTurn->opp, 1);
             continue;
         }
 
-        if(strncmp(buf,"DRAW",4) == 0){
-            if(buf[7] == 'S'){
-                    
-                if(drawHandle(game,playerTurn) == 1){
+        if (strncmp(buf,"DRAW",4) == 0) {
+            if (buf[7] == 'S') {
+                if (drawHandle(game,playerTurn)){
                     gameEnded = 1;
-                    CloseGAME(game,winner,0);
-                    continue;
                 }
-                write(playerTurn->con->fd,"DRAW|2|R|",10);
-                continue;
-            
+            } else {
+                write(playerTurn->con->fd,"INVL|18|No draw Initiated|",27);
             }
-            else{
-                write(playerTurn->con->fd,"INVL|18|No Draw Initiated|",27);
-                continue;
-            }
+            continue;
         }
         else if(strncmp(buf,"RSGN",4) == 0){
             gameEnded = 1;
@@ -275,19 +233,7 @@ void *play_game(void *arg)
         }
     }
 
-    // //change player
-    // if(playerTurn == playerOne){
-    //     playerTurn = playerTwo;
-    // }
-    // else{
-    //     playerTurn = playerOne;
-    // }
-
-    // }
-
-    //game
-    CloseGAME(game,winner,1);
-
+    CloseGAME(game);
 
     return NULL;
 }

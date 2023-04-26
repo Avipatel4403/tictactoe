@@ -5,7 +5,7 @@
 
 
 Draw:
-If a draw is requested, the only valid messages are either accepting/rejecting the draw. RSGN is not valid.
+If a draw is requested, the only valid messages are either accepting/rejecting the draw. RSGN is not valid. Malicious messages are ignored in the middle of a draw request.
 
 
 
