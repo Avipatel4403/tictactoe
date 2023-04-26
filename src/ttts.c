@@ -130,27 +130,6 @@ int drawHandle(Game* game,Client* currentPlayer){
 }
 
 void CloseGAME(Game* game, Client* winner, int resigned) {
-    //send Game
-    //get protocol
-    char* win;
-    char* loser;
-
-
-    //PLAY ONE WON
-    if(winner == game->one){
-        write(game->one->con->fd,win,strlen(win));
-        write(game->two->con->fd, loser, strlen(loser));
-    }
-    else if(winner == game->two){
-        write(game->one->con->fd, loser, strlen(loser));
-        write(game->two->con->fd, win, strlen(win));
-    }
-    else{
-        write(game->one->con->fd, closing, strlen(closing));
-        write(game->two->con->fd, closing, strlen(closing));
-    }
-
-
 
     // Close file descriptors
     close(game->one->con->fd);
@@ -207,9 +186,8 @@ void *play_game(void *arg)
 
     //Game Piece who won
     char result;
-    Client* winner;
     int gameEnded = 0;
-    int turnComplete = 0;
+
     
     //Player moves
     while(!gameEnded){
@@ -217,7 +195,7 @@ void *play_game(void *arg)
         //
         if((bytes = read(playerTurn->con->fd, buf, BUFSIZE)) <= 0){
             gameEnded = 1;
-            CloseGAME(game,playerTurn->opp,1);
+            write(playerTurn->opp->con->fd, "OVER|28|W|Opponent has disconnected|", 37);
             continue;
         }
 
@@ -227,7 +205,7 @@ void *play_game(void *arg)
         //Grab Message
         if(protocol_check(buf,bytes) == 1){
             gameEnded = 1;
-            CloseGAME(game, playerTurn->opp, 1);
+            write(playerTurn->opp->con->fd, "OVER|28|W|Opponent has disconnected|", 37);
             continue;
         }
 
@@ -236,7 +214,8 @@ void *play_game(void *arg)
                     
                 if(drawHandle(game,playerTurn) == 1){
                     gameEnded = 1;
-                    CloseGAME(game,winner,0);
+                    write(playerTurn->con->fd,"OVER|24|D|DRAW REQUEST ACCEPTED|",33);
+                    write(playerTurn->opp->con->fd, "OVER|24|D|DRAW REQUEST ACCEPTED|", 33);
                     continue;
                 }
                 write(playerTurn->con->fd,"DRAW|2|R|",10);
@@ -250,22 +229,23 @@ void *play_game(void *arg)
         }
         else if(strncmp(buf,"RSGN",4) == 0){
             gameEnded = 1;
-            if(playerTurn == playerOne){
-                winner = playerTwo;
-            }
-            else{
-                winner = playerOne;
-            }
+            write(playerTurn->opp->con->fd, "OVER|28|W|Opponent has disconnected|", 37);
             continue;
         }
         else if(strncmp(buf,"MOVE",4) == 0){
             if(makeMove(game->board,buf[9] - 48,buf[11] - 48,playerTurn->PIECE) != 1){
-                write(playerTurn->con->fd, "INVL | 24 | That space is occupied.|", 37);
+                write(playerTurn->con->fd, "INVL|24|That space is occupied.|", 33);
                 continue;
             }
             result = checkBoard(game->board);
             if (result != DRAW || result != EMPTY) {
                 gameEnded = 1;
+                write(playerTurn->con->fd,"OVER|10|W|YOU WON|",19);
+                write(playerTurn->opp->con->fd, "OVER|11|L|YOU LOSE|",20);
+                continue;
+            }
+            else if(result == DRAW){
+                write(playerTurn->con->fd, "OVER|18|D|BOARD IS FILLED|", 33);
             }
         }
         //INVALID COMMAND
@@ -273,17 +253,15 @@ void *play_game(void *arg)
             write(playerTurn->con->fd, "INVL|14|Wrong Command",22);
             continue;
         }
+
+        // change player
+        if (playerTurn == playerOne) {
+            playerTurn = playerTwo;
+        } else {
+            playerTurn = playerOne;
+        }
     }
 
-    // //change player
-    // if(playerTurn == playerOne){
-    //     playerTurn = playerTwo;
-    // }
-    // else{
-    //     playerTurn = playerOne;
-    // }
-
-    // }
 
     //game
     CloseGAME(game,winner,1);
