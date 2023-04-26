@@ -173,9 +173,8 @@ void *play_game(void *arg)
 
     //Game Piece who won
     char result;
-    Client* winner;
     int gameEnded = 0;
-    int turnComplete = 0;
+
     
     //Player moves
     while(!gameEnded){
@@ -208,28 +207,36 @@ void *play_game(void *arg)
         }
         else if(strncmp(buf,"RSGN",4) == 0){
             gameEnded = 1;
-            if(playerTurn == playerOne){
-                winner = playerTwo;
-            }
-            else{
-                winner = playerOne;
-            }
+            write(playerTurn->opp->con->fd, "OVER|28|W|Opponent has disconnected|", 37);
             continue;
         }
         else if(strncmp(buf,"MOVE",4) == 0){
             if(makeMove(game->board,buf[9] - 48,buf[11] - 48,playerTurn->PIECE) != 1){
-                write(playerTurn->con->fd, "INVL | 24 | That space is occupied.|", 37);
+                write(playerTurn->con->fd, "INVL|24|That space is occupied.|", 33);
                 continue;
             }
             result = checkBoard(game->board);
             if (result != DRAW || result != EMPTY) {
                 gameEnded = 1;
+                write(playerTurn->con->fd,"OVER|10|W|YOU WON|",19);
+                write(playerTurn->opp->con->fd, "OVER|11|L|YOU LOSE|",20);
+                continue;
+            }
+            else if(result == DRAW){
+                write(playerTurn->con->fd, "OVER|18|D|BOARD IS FILLED|", 33);
             }
         }
         //INVALID COMMAND
         else{
             write(playerTurn->con->fd, "INVL|14|Wrong Command",22);
             continue;
+        }
+
+        // change player
+        if (playerTurn == playerOne) {
+            playerTurn = playerTwo;
+        } else {
+            playerTurn = playerOne;
         }
     }
 
