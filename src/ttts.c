@@ -101,7 +101,7 @@ int drawHandle(Game* game,Client* curPlayer){
 
         // Player sent something malicious
         if(protocol_check(buf,bytes) == 1){
-            write(curPlayer->con->fd,"OVER|28|W|Opponent was kicked", 37);
+            write(curPlayer->con->fd,"OVER|28|W|Opponent was kicked", 30);
             return 1;
         }
 
@@ -190,7 +190,7 @@ void *play_game(void *arg)
 
         // Check if message follows protocol, kick player and end game if not
         if(protocol_check(buf,bytes) == 1){
-            write(playerTurn->opp->con->fd,"OVER|28|W|Opponent was kicked", 37);
+            write(playerTurn->opp->con->fd,"OVER|28|W|Opponent was kicked", 30);
             gameEnded = 1;
             continue;
         }
@@ -223,7 +223,36 @@ void *play_game(void *arg)
                 continue;
             }
             else if(result == DRAW){
-                write(playerTurn->con->fd, "OVER|18|D|BOARD IS FILLED|", 33);
+                write(playerTurn->con->fd, "OVER|18|D|BOARD IS FILLED|", 27);
+            }
+            else{
+                char movd[24];
+                movd[0] = 'M';
+                movd[1] = 'O';
+                movd[2] = 'V';
+                movd[3] = 'D';
+                movd[4] = '|';
+                movd[5] = '1';
+                movd[6] = '6';
+                movd[7] = '|';
+                movd[8] = playerTurn->PIECE;
+                movd[9] = '|';
+                movd[10] = buf[9];
+                movd[11] = ',';
+                movd[12] = buf[11];
+                movd[13] = '|';
+                int temp = 14;
+                for(int i = 0;i< 3;i++){
+                    for (int j = 0; j < 3; j++) {
+                        movd[temp] = game->board[i][j];
+                        temp++;
+                    }
+                }
+                movd[23] = '|';
+
+                write(playerTurn->con->fd,movd,24);
+                write(playerTurn->opp->con->fd,movd,24);
+
             }
         }
         //INVALID COMMAND

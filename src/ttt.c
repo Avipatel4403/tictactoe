@@ -109,14 +109,14 @@ int main(int argc, char **argv) {
     // }
 
     // send message to server
-    send(sock, temp, index, 0);
+    write(sock, temp, index);
     // clear temp
     memset(temp, 0, BUFSIZE);
 
     //wait
 
     memset(buffer, 0, BUFSIZE);
-    recv(sock, buffer, BUFSIZE, 0);
+    read(sock, buffer, BUFSIZE);
     
     printf("Data received from the server: %s\n", buffer);
     memset(buffer, 0, BUFSIZE);  // clear buffer
@@ -124,7 +124,7 @@ int main(int argc, char **argv) {
     //begin
 
     memset(buffer, 0, BUFSIZE);
-    recv(sock, buffer, BUFSIZE, 0);
+    read(sock, buffer, BUFSIZE);
 
     printf("Data received from the server: %s\n", buffer);
     memset(buffer, 0, BUFSIZE);  // clear buffer
@@ -181,13 +181,13 @@ int main(int argc, char **argv) {
     
 
         //send message to server
-        send(sock,temp,index,0);
+        write(sock,temp,index);
         //clear temp
         memset(temp, 0, BUFSIZE);
 
         //get message from server
         memset(buffer,0,BUFSIZE);
-        if(recv(sock, buffer, BUFSIZE,0) == 0) {
+        if(read(sock, buffer, BUFSIZE) == 0) {
             break;
         }
         printf("Data received from the server: %s\n", buffer);
