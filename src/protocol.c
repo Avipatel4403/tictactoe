@@ -27,12 +27,15 @@ int protocol_check(char *buf, int length) {
     } 
     else if (strcmp(code, "DRAW|") == 0) {
         if (length != 9) {
+            printf("Length\n");
             return 1;
         }
-        if (buf[7] != 'S' && buf[7] != 'A' || buf[7] != 'R') {
+        if (buf[7] != 'S' && buf[7] != 'A' && buf[7] != 'R') {
+            printf("SAR\n");
             return 1;
         }
         if (buf[5] != '2' || buf[6] != '|' || buf[8] != '|') {
+            printf("2||\n");
             return 1;
         }
         return 0;

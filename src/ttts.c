@@ -80,7 +80,11 @@ char checkBoard(char board[3][3]);
 int makeMove(char board[3][3], int row, int column, char piece);
 
 pthread_mutex_t queueLock;
-int curPlayers;
+pthread_mutex_t nameLock;
+char **nameList = NULL;
+int maxNames = 0;
+int numOfNames = 0;
+int curPlayers = 0;
 Client *clientList[2];
 char* protocol(char* message);
 char checkBoard(char board[3][3]);
@@ -101,11 +105,14 @@ int drawHandle(Game* game,Client* curPlayer){
 
         // Player sent something malicious
         if(protocol_check(buf,bytes) == 1){
-            write(curPlayer->con->fd,"OVER|28|W|Opponent was kicked", 37);
+            write(curPlayer->con->fd,"OVER|28|W|Opponent was kicked", 30);
             return 1;
         }
 
-        if (strncmp(buf,"DRAW|",5)) {
+        printf("Read %s in %d bytes from %s\n", buf, bytes,curPlayer->opp->NAME);
+
+
+        if (strncmp(buf,"DRAW|",5) == 0) {
             if (buf[7] == 'A') {
                 write(curPlayer->con->fd, "OVER|30|D|Both players agreed to draw|", 39);
                 write(curPlayer->opp->con->fd, "OVER|30|D|Both players agreed to draw|", 39);
@@ -186,11 +193,11 @@ void *play_game(void *arg)
             continue;
         } 
 
-        printf("Read %s from Player %c \n", buf,playerTurn->PIECE);
+        printf("Read %s in %d bytes from %s\n", buf,bytes, playerTurn->NAME);
 
         // Check if message follows protocol, kick player and end game if not
         if(protocol_check(buf,bytes) == 1){
-            write(playerTurn->opp->con->fd,"OVER|28|W|Opponent was kicked", 37);
+            write(playerTurn->opp->con->fd,"OVER|28|W|Opponent was kicked", 30);
             gameEnded = 1;
             continue;
         }
@@ -244,6 +251,34 @@ void *play_game(void *arg)
 
     return NULL;
 }
+// int nameTaken(char *name) {
+//     pthread_mutex_lock(&nameLock)
+    
+//     // Check if the name is already in the list
+//     for (int i = 0; i < numOfNames; i++) {
+//         if (strcmp(name, nameList[i]) == 0) {
+//             return 1;
+//         }
+//     }
+//     return 0;
+//     pthread_mutex_unlock(&nameLock);
+// }
+
+// void addName(char **name) {
+//     pthread_mutex_lock(&nameLock)
+//     if(nameList == NULL) {
+//         maxNames = 8
+//         nameList = malloc(maxNames * sizeof(char*));
+//         nameList[numOfNames++] = name;
+//     } else {
+//         if(numOfNames == maxNames) {
+
+//         } else {
+//             nameList[numOfNames++] = name;
+//         }
+//     }
+//     pthread_mutex_unlock(&nameLock);
+// }
 
 void *create_client(void *arg) 
 {
@@ -264,17 +299,26 @@ void *create_client(void *arg)
         }
         printf("Read: %s\n", buffer);
         int error = protocol_name(&buffer[0], bytes_read, &name);
+        printf("Error: %d\n", error);
         if (error == 0) {
             break;
-        } else if (error == 1) {
+        }
+        else if (error == 1) {
             response = "INVL|34|Player name exceeds 20 characters|";
             write(con->fd, response, strlen(response));
-        } else if (error == 2) {
+        } 
+        else if (error == 2) {
             response = "INVL|23|Invalid Message Format|";
             write(con->fd, response, strlen(response));
             goto close_socket;
         }
+        // if(nameTaken(name)) {
+        //     write(con->fd, "INVL|20|Name already in use|", 29);
+        //     continue;
+        // } else { break; }
     }
+
+    // addName(name);
 
     char *wait = "WAIT|0|";
     write(con->fd, wait, strlen(wait));

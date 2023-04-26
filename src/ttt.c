@@ -46,152 +46,58 @@ int connect_inet(char *host, char *service) {
 
 
 int main(int argc, char **argv) {
+
     int sock;
     if (argc != 3) {
         printf("Specify host and service\n");
         exit(EXIT_FAILURE);
     }
 
-
     sock = connect_inet(argv[1], argv[2]);
     if (sock < 0) exit(EXIT_FAILURE);
-
 
     char buffer[BUFSIZE];
     int bytes;
 
-    printf("ENTER NAME:");
+    printf("Enter Play Message:\n");
 
+    // Reads Play from terminal
     bytes = read(STDIN_FILENO, buffer, BUFSIZE);
-    if (bytes >= BUFSIZE) {
-        printf("Message to long\n");
-
-    }
-
-    // work with whats been taken from user
-    char temp[BUFSIZE];
-    memset(temp, 0, BUFSIZE);
-    temp[0] = buffer[0];
-    temp[1] = buffer[1];
-    temp[2] = buffer[2];
-    temp[3] = buffer[3];
-    temp[4] = '|';
-
-    int index = 5;
-    int size = bytes - 5;
-    char num[4];
-    sprintf(num, "%d", size);
-    for (int i = 0; num[i] != '\0'; i++) {
-        temp[index] = num[i];
-        index++;
-    }
-    temp[index] = '|';
-    index++;
-
-    for (int i = 5; i < bytes - 1; i++) {
-        if (buffer[i] == ' ' && buffer[0] != 'P') {
-            temp[index++] = '|';
-            index++;
-        } else {
-            temp[index] = buffer[i];
-            index++;
-        }
-    }
-
-    if (size != 0) {
-        temp[index] = '|';
-        index++;
-    }
-
-    // //print temp
-    // for(int i = 0;i < index;i++){
-    //     printf("%d: %c\n",i, temp[i]);
-    // }
-
-    // send message to server
-    send(sock, temp, index, 0);
-    // clear temp
-    memset(temp, 0, BUFSIZE);
-
-    //wait
-
+    // Sends Play to Server
+    write(sock, buffer, bytes-1);
     memset(buffer, 0, BUFSIZE);
-    recv(sock, buffer, BUFSIZE, 0);
-    
-    printf("Data received from the server: %s\n", buffer);
-    memset(buffer, 0, BUFSIZE);  // clear buffer
 
-    //begin
-
+    // Read Wait
+    bytes = read(sock, buffer, BUFSIZE);
+    printf("Data Received from Server: %s\n", buffer);
     memset(buffer, 0, BUFSIZE);
-    recv(sock, buffer, BUFSIZE, 0);
 
-    printf("Data received from the server: %s\n", buffer);
-    memset(buffer, 0, BUFSIZE);  // clear buffer
+    // Read Begin
+    bytes = read(sock, buffer, BUFSIZE);
+    printf("Data Received from Server: %s\n", buffer);
 
-    while(1){
+    if(buffer[7] == 'X') {
+        printf("You are first, write a message\n");
+        memset(buffer, 0, BUFSIZE);
+        goto Write;
+    } else { 
+        printf("You are second, waiting for opponent\n");
+        memset(buffer, 0, BUFSIZE);
+        goto Read; }
 
-        bytes = read(STDIN_FILENO , buffer, BUFSIZE);
-        if(bytes >= BUFSIZE){
-            printf("Message to long\n");
-            break;
+    while(1) {
+        Read:
+        bytes = read(sock, buffer, BUFSIZE);
+        if(bytes == 0) {
+            break;`
         }
+        printf("Data Received from Server: %s\n", buffer);
+        memset(buffer, 0, BUFSIZE);
 
-        //work with whats been taken from user 
-        char temp[BUFSIZE];
-        memset(temp,0,BUFSIZE);
-        temp[0] = buffer[0];
-        temp[1] = buffer[1];
-        temp[2] = buffer[2];
-        temp[3] = buffer[3];
-        temp[4] = '|';
-
-        int index = 5;
-        int size = bytes - 5;
-        char num[4];
-        sprintf(num,"%d",size);
-        for(int i = 0;num[i] != '\0';i++){
-            temp[index] = num[i];
-            index++;
-        }
-        temp[index] = '|';
-        index++;
-
-        for(int i = 5;i < bytes -1 ;i++){
-            if(buffer[i] == ' ' && buffer[0] != 'P'){
-                temp[index++] = '|';
-                index++;                
-            }
-            else{
-                temp[index] = buffer[i];
-                index++;
-            }
-        }
-
-        if(size != 0){
-            temp[index] = '|';
-            index++;
-        }
-
-        // //print temp
-        // for(int i = 0;i < index;i++){
-        //     printf("%d: %c\n",i, temp[i]);
-        // }
-
-    
-
-        //send message to server
-        send(sock,temp,index,0);
-        //clear temp
-        memset(temp, 0, BUFSIZE);
-
-        //get message from server
-        memset(buffer,0,BUFSIZE);
-        if(recv(sock, buffer, BUFSIZE,0) == 0) {
-            break;
-        }
-        printf("Data received from the server: %s\n", buffer);
-        memset(buffer, 0, BUFSIZE);  // clear buffer
+        Write:
+        bytes = read(STDIN_FILENO, buffer, BUFSIZE);
+        write(sock, buffer, bytes-1);
+        memset(buffer, 0, BUFSIZE);
     }
 
     close(sock);
