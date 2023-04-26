@@ -109,7 +109,7 @@ int drawHandle(Game* game,Client* curPlayer){
             return 1;
         }
 
-        printf("Read %s in %d bytes from %s\n", buf, bytes,curPlayer->opp->NAME);
+   
 
 
         if (strncmp(buf,"DRAW|",5) == 0) {
@@ -164,10 +164,12 @@ void *play_game(void *arg)
     playerTwo->opp = playerOne;
 
     for(int i = 0; i < 3; i++) {
+
         for(int j = 0; j < 3; j++) {
             game->board[i][j] = EMPTY;
         }
     }
+
 
     //player one goes first
     Client* playerTurn = playerOne;
@@ -237,7 +239,10 @@ void *play_game(void *arg)
                 continue;
             }
             else if(result == DRAW){
+                gameEnded = 1;
                 write(playerTurn->con->fd, "OVER|18|D|BOARD IS FILLED|", 27);
+                write(playerTurn->opp->con->fd, "OVER|18|D|BOARD IS FILLED|", 27);
+                continue;
             }
             else{
                 char movd[24];
@@ -333,7 +338,7 @@ void *create_client(void *arg)
         if (bytes_read <= 0) {
             goto close_socket;
         }
-        printf("Read: %s\n", buffer);
+
         int error = protocol_name(&buffer[0], bytes_read, &name);
         if (error == 0) {
             break;
@@ -368,7 +373,7 @@ void *create_client(void *arg)
     if (curPlayers == 0) {
         //If there are no players waiting, add the client to the list
         clientList[curPlayers++] = client;
-        printf("Player %s is waiting for an opponent\n", client->NAME);
+
     } else {
 
         // If there is another player waiting, create a new game
@@ -394,7 +399,7 @@ void *create_client(void *arg)
     }
 
     pthread_mutex_unlock(&queueLock);
-    printf("Done creating Client for %s\n", client->NAME);
+
     return NULL;
 
     close_socket:
@@ -507,21 +512,25 @@ char checkBoard(char board[3][3]) {
     //check rows 
     for(int i = 0;i < 3;i++){
         if (board[i][0] == board[i][1] && board[i][1] == board[i][2]) {
+
             return board[i][0];
         }
     }
 
     //check diagonal
     if (board[0][0] == board[1][1] && board[1][1] == board[2][2]) {
+
         return board[0][0];
     } 
-    else if (board[0][2] == board[1][1] && board[1][1] == board[2][0]) {
+    if (board[0][2] == board[1][1] && board[1][1] == board[2][0]) {
+
         return board[0][2];
     }
 
     //check columns
     for (int i = 0; i < 3; i++) {
         if (board[0][i] == board[1][i] && board[0][i] == board[2][i]) {
+ 
             return board[0][i];
         }
     }
@@ -529,6 +538,7 @@ char checkBoard(char board[3][3]) {
     for (int i = 0; i < 3; i++) {
         for(int j = 0; j < 3;j++){
             if (board[i][j] == EMPTY) {
+   
                 return EMPTY;
             }
         }
